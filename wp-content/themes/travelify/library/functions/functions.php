@@ -438,4 +438,13 @@ function travelify_posted_on() {
 }
 endif;
 
+
+
+add_action( 'travelify_slider' , 'travelify_slider_add_clider' );
+function travelify_slider_add_clider() {
+    if(is_home() || is_front_page()){
+        echo do_shortcode('[smartslider3 slider=1]');
+        echo '</br>';
+    }
+}
 ?>
