@@ -44,12 +44,20 @@ window.n2c = (function (origConsole) {
 n2c.debug(false);
 window.n2const = {
     passiveEvents: false,
+    devicePixelRatio: window.devicePixelRatio || 1,
     isIOS: /iPad|iPhone|iPod/.test(navigator.platform),
-    isEdge: /Edge\/\d./i.test(navigator.userAgent),
+    isEdge: (function () {
+        var m = navigator.userAgent.match(/Edge\/([0-9]+)/);
+        if (m === null) {
+            return false;
+        }
+
+        return m[1];
+    })(),
     isFirefox: navigator.userAgent.toLowerCase().indexOf('firefox') > -1,
     isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Silk/i.test(navigator.userAgent),
     isPhone: (/Android/i.test(navigator.userAgent) && /mobile/i.test(navigator.userAgent)) || /webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
-    isIE: (function detectIE() {
+    isIE: (function () {
         var ua = window.navigator.userAgent;
 
         var msie = ua.indexOf('MSIE ');
@@ -65,19 +73,13 @@ window.n2const = {
             return parseInt(ua.substring(rv + 3, ua.indexOf('.', rv)), 10);
         }
 
-        var edge = ua.indexOf('Edge/');
-        if (edge > 0) {
-            // Edge (IE 12+) => return version number
-            return parseInt(ua.substring(edge + 5, ua.indexOf('.', edge)), 10);
-        }
-
-        // other browser
         return false;
     })(),
+    isSamsungBrowser: navigator.userAgent.match(/SamsungBrowser/i),
     isBot: /bot|googlebot|crawler|spider|robot|crawling|Google Search Console/i.test(navigator.userAgent),
     lightboxMobileNewTab: 1,
     isVideoAutoplayAllowed: function () {
-        var isAllowed = !!(navigator.platform.match(/(Win|Mac)/) || !(/Mobi/.test(navigator.userAgent)) || ('playsInline' in document.createElement('video') || ('webkit-playsinline' in document.createElement('video'))) || (navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./) && parseInt(navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./)[2]) >= 53));
+        var isAllowed = !!(navigator.platform.match(/(Win|Mac)/) || !(/Mobi/.test(navigator.userAgent)) || ('playsInline' in document.createElement('video') || ('webkit-playsinline' in document.createElement('video'))) || (navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./) && parseInt(navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./)[2]) >= 53) || navigator.userAgent.match(/Android.*(Firefox|Edge|Opera)/));
         window.n2const.isVideoAutoplayAllowed = function () {
             return isAllowed;
         };
@@ -441,8 +443,7 @@ N2D('ImagesLoaded', function ($, undefined) {
                         response[key] = events[key];
                     }
                 }
-            }
-            else {
+            } else {
                 response = events[evt] || (events[evt] = []);
             }
 
@@ -502,9 +503,9 @@ N2D('ImagesLoaded', function ($, undefined) {
             for (key in listeners) {
                 if (listeners.hasOwnProperty(key) && indexOfListener(listeners[key], listener) === -1) {
                     listeners[key].push(listenerIsWrapped ? listener : {
-                            listener: listener,
-                            once: false
-                        });
+                        listener: listener,
+                        once: false
+                    });
                 }
             }
 
@@ -647,15 +648,13 @@ N2D('ImagesLoaded', function ($, undefined) {
                         // Pass the single listener straight through to the singular method
                         if (typeof value === 'function') {
                             single.call(this, i, value);
-                        }
-                        else {
+                        } else {
                             // Otherwise pass back to the multiple function
                             multiple.call(this, i, value);
                         }
                     }
                 }
-            }
-            else {
+            } else {
                 // So evt must be a string
                 // And listeners must be an array of listeners
                 // Loop over it and pass each one to the multiple method
@@ -686,16 +685,14 @@ N2D('ImagesLoaded', function ($, undefined) {
             if (type === 'string') {
                 // Remove all listeners for the specified event
                 delete events[evt];
-            }
-            else if (type === 'object') {
+            } else if (type === 'object') {
                 // Remove all events matching the regex.
                 for (key in events) {
                     if (events.hasOwnProperty(key) && evt.test(key)) {
                         delete events[key];
                     }
                 }
-            }
-            else {
+            } else {
                 // Remove all listeners in all events
                 delete this._events;
             }
@@ -796,8 +793,7 @@ N2D('ImagesLoaded', function ($, undefined) {
         proto._getOnceReturnValue = function _getOnceReturnValue() {
             if (this.hasOwnProperty('_onceReturnValue')) {
                 return this._onceReturnValue;
-            }
-            else {
+            } else {
                 return true;
             }
         };
@@ -968,7 +964,7 @@ N2D('ImagesLoaded', function ($, undefined) {
              */
             function ImagesLoaded(elem, options, onAlways) {
                 // coerce ImagesLoaded() without new, to be new ImagesLoaded()
-                if (!( this instanceof ImagesLoaded )) {
+                if (!(this instanceof ImagesLoaded)) {
                     return new ImagesLoaded(elem, options, onAlways);
                 }
                 // use elem as selector string
@@ -1080,8 +1076,8 @@ N2D('ImagesLoaded', function ($, undefined) {
 
             // IE8
             var getStyle = window.getComputedStyle || function (elem) {
-                    return elem.currentStyle;
-                };
+                return elem.currentStyle;
+            };
 
             /**
              * @param {Image} img
@@ -1270,197 +1266,276 @@ N2D('ImagesLoaded', function ($, undefined) {
 
 });
 N2D('UniversalPointer', function ($, undefined) {
+    var pointerEvents = !!(window.PointerEvent || window.MSPointerEvent || window.navigator.msPointerEnabled || window.navigator.pointerEnabled),
+        touchEvents = !!window.TouchEvent,
+        isIOS = touchEvents && navigator.userAgent.match(/iPhone|iPad|iPod/i);
+
+    function UniversalClickContext(el, handler) {
+        this.el = el;
+        this.handler = handler;
+        this.$el = $(el).data('universalclick', this);
+        this.preventMouse = false;
+        this.timeouts = [];
+        this.localListeners = [];
+        this.globalListeners = [];
+    }
+
+    UniversalClickContext.prototype.addTimeout = function (timeout) {
+        this.timeouts.push(timeout);
+    };
+
+    UniversalClickContext.prototype.clearTimeouts = function () {
+
+        for (var i = 0; i < this.timeouts.length; i++) {
+            clearTimeout(this.timeouts[i]);
+        }
+
+        this.timeouts = [];
+    };
+
+    UniversalClickContext.prototype.click = function (e) {
+
+        this.handler.call(this.el, e);
+
+        this.clear();
+    };
+
+    UniversalClickContext.prototype.clear = function () {
+
+        for (var i = 0; i < this.localListeners.length; i++) {
+            this.localListeners[i][0].removeEventListener(this.localListeners[i][1], this.localListeners[i][2], this.localListeners[i][3]);
+        }
+    };
+
+    UniversalClickContext.prototype.addGlobalEventListener = function (type, listener, options) {
+        this.globalListeners.push([type, listener, options]);
+        this.el.addEventListener(type, listener, options);
+    };
+
+    UniversalClickContext.prototype.addLocalEventListener = function (el, type, listener, options) {
+        this.localListeners.push([el, type, listener, options]);
+        el.addEventListener(type, listener, options);
+    };
+
+    UniversalClickContext.prototype.remove = function () {
+
+        this.clear();
+
+        this.clearTimeouts();
+
+        for (var i = 0; i < this.globalListeners.length; i++) {
+            this.el.removeEventListener(this.globalListeners[i][0], this.globalListeners[i][1], this.globalListeners[i][2]);
+        }
+    };
+
     $.event.special.universalclick = {
         add: function (handleObj) {
-            var el = $(this),
-                _suppress = false,
-                _suppressTimeout = null,
-                suppress = function () {
-                    _suppress = true;
-                    if (_suppressTimeout) {
-                        clearTimeout(_suppressTimeout);
-                    }
-                    _suppressTimeout = setTimeout(function () {
-                        _suppress = false;
-                    }, 400);
-                },
-                startX = 0, startY = 0;
+            var context = new UniversalClickContext(this, handleObj.handler);
 
-            try {
-                var cb = function (e) {
-                    startX = e.touches[0].clientX;
-                    startY = e.touches[0].clientY;
-                };
+            if (pointerEvents) {
+                context.addGlobalEventListener('pointerdown', function (downEvent) {
+                    if (!downEvent.isPrimary) return;
 
-                el[0]['_touchstart'] = cb;
-                el[0].addEventListener('touchstart', cb, window.n2const.passiveEvents ? {passive: true} : false);
+                    context.addLocalEventListener(document.body.parentNode, 'pointerup', function (upEvent) {
+                        if (!upEvent.isPrimary) return;
 
-                el.on('touchend.universalclick', function (e) {
-                    if (Math.abs(e.originalEvent.changedTouches[0].clientX - startX) < 10 && Math.abs(e.originalEvent.changedTouches[0].clientY - startY) < 10) {
-                        if (!_suppress) {
-                            suppress();
-                            handleObj.handler.apply(this, arguments);
+                        if (downEvent.pointerId === upEvent.pointerId) {
+                            if (Math.abs(upEvent.clientX - downEvent.clientX) < 10 && Math.abs(upEvent.clientY - downEvent.clientY) < 10) {
+                                context.click(upEvent);
+                            } else {
+                                context.clear();
+                            }
                         }
-                    }
-                }).on('click.universalclick', function (e) {
-                    if (!_suppress) {
-                        suppress();
-                        handleObj.handler.apply(this, arguments);
-                    }
-
+                    });
                 });
-            } catch (e) {
-                console.error(e);
-            }
-        },
+            } else {
+                if (!isIOS) {
+                    context.addGlobalEventListener('click', function (e) {
+                        if (!context.preventMouse) {
+                            context.click(e);
+                        }
+                    });
+                }
 
+                if (touchEvents) {
+                    context.addGlobalEventListener('touchstart', function (downEvent) {
+                        context.clearTimeouts();
+
+                        context.preventMouse = true;
+                        context.addLocalEventListener(document.body.parentNode, 'touchend', function (upEvent) {
+                            if (Math.abs(upEvent.changedTouches[0].clientX - downEvent.changedTouches[0].clientX) < 10 && Math.abs(upEvent.changedTouches[0].clientY - downEvent.changedTouches[0].clientY) < 10) {
+                                context.click(upEvent);
+                            } else {
+                                context.clear();
+                            }
+                            context.addTimeout(setTimeout(function () {
+                                context.preventMouse = false;
+                            }, 1000));
+                        }, {passive: true});
+                    }, {passive: true});
+                }
+            }
+
+        },
         remove: function () {
-            $(this).off('.universalclick');
-            try {
-                this.removeEventListener('touchstart', this['_touchstart'], window.n2const.passiveEvents ? {passive: true} : false);
-                delete this['_touchstart'];
-            } catch (e) {
+            var $el = $(this),
+                context = $el.data('universalclick');
+            if (context) {
+                context.remove();
+                $el.removeData('universalclick');
             }
         }
     };
 
-    var touchElements = [],
-        globalTouchWatched = false,
-        touchStartCB = function (e) {
-            var target = $(e.target);
-            for (var i = touchElements.length - 1; i >= 0; i--) {
-                if (!touchElements[i].is(target) && touchElements[i].find(target).length == 0) {
-                    touchElements[i].trigger('universal_leave');
-                }
-            }
-        },
-        watchGlobalTouch = function () {
-            if (!globalTouchWatched) {
-                globalTouchWatched = true;
-                try {
-                    $('body').get(0).addEventListener('touchstart', touchStartCB, window.n2const.passiveEvents ? {passive: true} : false);
-                } catch (e) {
-                }
-            }
-        }, unWatchGlobalTouch = function () {
-            if (globalTouchWatched) {
-                try {
-                    $('body').get(0).removeEventListener('touchstart', touchStartCB, window.n2const.passiveEvents ? {passive: true} : false);
-                } catch (e) {
-                }
-                globalTouchWatched = false;
-            }
-        },
-        addTouchElement = function (el) {
-            if ($.inArray(el, touchElements) == -1) {
-                touchElements.push(el);
-            }
-            if (touchElements.length == 1) {
-                watchGlobalTouch();
-            }
-        },
-        removeTouchElement = function (el) {
-            var i = $.inArray(el, touchElements);
-            if (i >= 0) {
-                touchElements.splice(i, 1);
-                if (touchElements.length == 0) {
-                    unWatchGlobalTouch();
-                }
-            }
-        };
+
+    function UniversalEnterContext(el, handler, leaveOnSecond) {
+        this.el = el;
+        this.handler = handler;
+        this.$el = $(el).data('universalenter', this);
+        this.leaveOnSecond = leaveOnSecond;
+        this.preventMouse = false;
+        this.isActive = false;
+        this.timeouts = [];
+        this.localListeners = [];
+        this.globalListeners = [];
+    }
+
+    UniversalEnterContext.prototype.enter = function (e) {
+        if (this.leaveOnSecond && this.isActive) {
+            this.leave();
+            return false;
+        }
+
+        this.handler.apply(this.el, arguments);
+        this.isActive = true;
+        return true;
+    };
+
+    UniversalEnterContext.prototype.leave = function () {
+        this.clearTimeouts();
+
+        for (var i = 0; i < this.localListeners.length; i++) {
+            this.localListeners[i][0].removeEventListener(this.localListeners[i][1], this.localListeners[i][2], this.localListeners[i][3]);
+        }
+
+        this.isActive = false;
+        this.$el.triggerHandler('universalleave');
+    };
+
+    UniversalEnterContext.prototype.testLeave = function (target) {
+        if (!this.$el.is(target) && this.$el.find(target).length === 0) {
+            this.leave();
+        }
+    };
+
+    UniversalEnterContext.prototype.addTimeout = function (timeout) {
+        this.timeouts.push(timeout);
+    };
+
+    UniversalEnterContext.prototype.clearTimeouts = function () {
+
+        for (var i = 0; i < this.timeouts.length; i++) {
+            clearTimeout(this.timeouts[i]);
+        }
+
+        this.timeouts = [];
+    };
+
+    UniversalEnterContext.prototype.addGlobalEventListener = function (type, listener, options) {
+        this.globalListeners.push([type, listener, options]);
+        this.el.addEventListener(type, listener, options);
+    };
+
+    UniversalEnterContext.prototype.remove = function () {
+        if (this.isActive) {
+            this.leave();
+        }
+
+        this.clearTimeouts();
+
+        for (var i = 0; i < this.globalListeners.length; i++) {
+            this.el.removeEventListener(this.globalListeners[i][0], this.globalListeners[i][1], this.globalListeners[i][2]);
+        }
+    };
+
+    UniversalEnterContext.prototype.addLocalEventListener = function (el, type, listener, options) {
+        this.localListeners.push([el, type, listener, options]);
+        el.addEventListener(type, listener, options);
+    };
 
     $.event.special.universalenter = {
         add: function (handleObj) {
+            var context = new UniversalEnterContext(this, handleObj.handler, handleObj.data ? handleObj.data.leaveOnSecond : false);
 
-            var el = $(this),
-                _suppress = false,
-                _suppressTimeout = null,
-                suppress = function () {
-                    _suppress = true;
-                    if (_suppressTimeout) {
-                        clearTimeout(_suppressTimeout);
-                        _suppressTimeout = null;
-                    }
-                    _suppressTimeout = setTimeout(function () {
-                        _suppress = false;
-                    }, 400);
-                };
+            if (pointerEvents) {
+                context.addGlobalEventListener('pointerenter', function (e) {
+                    if (!e.isPrimary) return;
 
-            var leaveOnSecond = false;
-            if (handleObj.data) {
-                leaveOnSecond = handleObj.data.leaveOnSecond;
-            }
+                    context.clearTimeouts();
 
-            var touchTimeout = null,
-                leaveTimeout = null,
-                mouseenter = function (e) {
-                    if (!_suppress) {
-                        if (e.type === 'touchstart') {
-                            suppress();
-                            if (leaveOnSecond) {
-                                if (touchTimeout) {
-                                    el.trigger('universal_leave');
-                                } else {
-                                    addTouchElement(el);
-                                    handleObj.handler.apply(this, arguments);
-                                    touchTimeout = setTimeout(function () {
-                                        el.trigger('universal_leave');
-                                    }, 5000);
-                                }
-                            } else {
-                                if (touchTimeout) {
-                                    clearTimeout(touchTimeout);
-                                    touchTimeout = null;
-                                }
+                    if (context.enter(e)) {
 
-                                addTouchElement(el);
+                        if (e.pointerType !== 'mouse') {
+                            context.addLocalEventListener(document.body.parentNode, 'pointerdown', function (e) {
+                                if (!e.isPrimary) return;
 
-                                handleObj.handler.apply(this, arguments);
-                                touchTimeout = setTimeout(function () {
-                                    el.trigger('universal_leave');
-                                }, 5000);
-
-                            }
-                        } else {
-                            if (leaveTimeout) clearTimeout(leaveTimeout);
-                            handleObj.handler.apply(this, arguments);
-                            el.on('mouseleave.universalleave', function () {
-                                el.off('.universalleave');
-                                if (leaveOnSecond) {
-                                    el.trigger('universalleave');
-                                } else {
-                                    leaveTimeout = setTimeout(function () {
-                                        el.trigger('universalleave');
-                                        leaveTimeout = null;
-                                    }, 800);
-                                }
+                                context.testLeave(e.target);
                             });
+
+                            context.addTimeout(setTimeout(function () {
+                                context.leave();
+                            }, 5000));
                         }
                     }
-                };
 
-            el.on('universal_leave.universalenter', function (e) {
-                e.stopPropagation();
-                clearTimeout(touchTimeout);
-                touchTimeout = null;
-                removeTouchElement(el);
-                el.trigger('universalleave');
-            }).on('mouseenter.universalenter', mouseenter);
+                });
 
-            try {
-                el[0]['_mouseenter'] = mouseenter;
-                el[0].addEventListener('touchstart', mouseenter, window.n2const.passiveEvents ? {passive: true} : false);
-            } catch (e) {
+                context.addGlobalEventListener('pointerleave', function (e) {
+                    if (!e.isPrimary) return;
 
+                    if (e.pointerType === 'mouse') {
+                        context.leave();
+                    }
+                });
+            } else {
+
+                context.addGlobalEventListener('mouseenter', function (e) {
+                    if (!context.preventMouse) {
+                        context.enter(e);
+                    }
+                });
+
+                context.addGlobalEventListener('mouseleave', function () {
+                    if (!context.preventMouse) {
+                        context.leave();
+                    }
+                });
+
+                if (touchEvents) {
+                    context.addGlobalEventListener('touchstart', function (e) {
+                        context.preventMouse = true;
+                        context.clearTimeouts();
+
+                        if (context.enter(e)) {
+                            context.addLocalEventListener(document.body.parentNode, 'touchstart', function (e) {
+                                context.testLeave(e.target);
+                            });
+
+                            context.addTimeout(setTimeout(function () {
+                                context.leave();
+                                context.preventMouse = false;
+                            }, 5000));
+                        }
+                    }, {passive: true});
+                }
             }
         },
         remove: function () {
-            $(this).off('.universalenter .universalleave');
-            try {
-                this.removeEventListener('touchstart', this['_mouseenter'], window.n2const.passiveEvents ? {passive: true} : false);
-                delete this['_mouseenter'];
-            } catch (e) {
-
+            var $el = $(this),
+                context = $el.data('universalenter');
+            if (context) {
+                context.remove();
+                $el.removeData('universalenter');
             }
         }
     };
@@ -1491,7 +1566,7 @@ N2D('EventBurrito', function ($, undefined) {
 
         var o = {
             preventDefault: true,
-            clickTolerance: 0,
+            clickTolerance: 10,
             preventScroll: false,
             mouse: true,
             axis: 'x',
@@ -1505,23 +1580,19 @@ N2D('EventBurrito', function ($, undefined) {
         options && mergeObjects(o, options);
 
         var support = {
-                pointerEvents: !!window.navigator.pointerEnabled,
-                msPointerEvents: !!window.navigator.msPointerEnabled
+                pointerEvents: !!(window.PointerEvent || window.MSPointerEvent || window.navigator.msPointerEnabled || window.navigator.pointerEnabled)
             },
             start = {},
             diff = {},
-            speed = {},
-            stack = [],
             listeners = [],
             isScrolling,
             isRealScrolling,
             eventType,
             clicksAllowed = true, //flag allowing default click actions (e.g. links)
-            eventModel = (support.pointerEvents ? 1 : (support.msPointerEvents ? 2 : 0)),
+            eventModel = (support.pointerEvents ? 1 : 0),
             events = [
                 ['touchstart', 'touchmove', 'touchend', 'touchcancel'], //touch events
                 ['pointerdown', 'pointermove', 'pointerup', 'pointercancel'], //pointer events
-                ['MSPointerDown', 'MSPointerMove', 'MSPointerUp', 'MSPointerCancel'], //IE10 pointer events
                 ['mousedown', 'mousemove', 'mouseup', false] //mouse events
             ],
             //some checks for different event types
@@ -1538,11 +1609,6 @@ N2D('EventBurrito', function ($, undefined) {
                     //2. left mouse button is not pressed,
                     //3. mouse drag is disabled and event is not touch
                     return !e.isPrimary || (e.buttons && e.buttons !== 1) || (!o.mouse && e.pointerType !== 'touch' && e.pointerType !== 'pen');
-                },
-                //IE10 pointer events
-                function (e) {
-                    //same checks as in pointer events
-                    return !e.isPrimary || (e.buttons && e.buttons !== 1) || (!o.mouse && e.pointerType !== e.MSPOINTER_TYPE_TOUCH && e.pointerType !== e.MSPOINTER_TYPE_PEN);
                 },
                 //mouse events
                 function (e) {
@@ -1594,24 +1660,12 @@ N2D('EventBurrito', function ($, undefined) {
             diff = {
                 x: (eventType ? event.clientX : event.touches[0].clientX) - start.x,
                 y: (eventType ? event.clientY : event.touches[0].clientY) - start.y,
-
-                time: Number(new Date) - start.time
+                time: Date.now()
             };
-
-            if (diff.time - stack[stack.length - 1].time) {
-                for (var i = 0; i < stack.length - 1 && diff.time - stack[i].time > 80; i++) ;
-
-                speed = {
-                    x: (diff.x - stack[i].x) / (diff.time - stack[i].time),
-                    y: (diff.y - stack[i].y) / (diff.time - stack[i].time)
-                };
-
-                if (stack.length >= 5) stack.shift();
-                stack.push({x: diff.x, y: diff.y, time: diff.time});
-            }
         }
 
         function tStart(event, eType) {
+            if (event.isPrimary !== undefined && !event.isPrimary) return;
             if (isDragStarted) return;
 
             clicksAllowed = true;
@@ -1624,7 +1678,9 @@ N2D('EventBurrito', function ($, undefined) {
 
             //attach event listeners to the document, so that the slider
             //will continue to recieve events wherever the pointer is
-            addEvent(document, events[eventType][1], tMove, events[eventType][1] == 'touchmove' ? {passive: false} : false);
+            if (eventType !== 0) {
+                addEvent(document, events[eventType][1], tMove, false);
+            }
             addEvent(document, events[eventType][2], tEnd, false);
             addEvent(document, events[eventType][3], tEnd, false);
 
@@ -1636,15 +1692,13 @@ N2D('EventBurrito', function ($, undefined) {
                 x: eventType ? event.clientX : event.touches[0].clientX,
                 y: eventType ? event.clientY : event.touches[0].clientY,
 
-                time: Number(new Date)
+                time: Date.now()
             };
 
             //reset
             isScrolling = undefined;
             isRealScrolling = false;
-            diff = {x: 0, y: 0, time: 0};
-            speed = {x: 0, y: 0};
-            stack = [{x: 0, y: 0, time: 0}];
+            diff = {x: 0, y: 0};
 
             o.start(event, start);
 
@@ -1652,65 +1706,90 @@ N2D('EventBurrito', function ($, undefined) {
         }
 
         function tMove(event) {
+            if (event.isPrimary !== undefined && !event.isPrimary) return;
             //if user is trying to scroll vertically -- do nothing
-            if (o.axis == 'x') {
+            if (o.axis === 'x') {
                 if ((!o.preventScroll && isScrolling) || checks[eventType](event)) return;
             }
             if (checkTarget(event.target)) return;
 
             getDiff(event);
 
-            if (Math.abs(diff.x) > o.clickTolerance || Math.abs(diff.y) > o.clickTolerance) clicksAllowed = false; //if there was a move -- deny all the clicks before the next touchstart
-
-            //check whether the user is trying to scroll vertically
-            if (isScrolling === undefined && eventType !== 3) {
-                //assign and check `isScrolling` at the same time
-                if (isScrolling = (Math.abs(diff.x) < Math.abs(diff.y)) && !o.preventScroll) return;
+            if (Math.abs(diff.x) > o.clickTolerance || Math.abs(diff.y) > o.clickTolerance) {
+                clicksAllowed = false; //if there was a move -- deny all the clicks before next tStart
             }
 
-            if (o.move(event, start, diff, speed, isRealScrolling)) {
-                if (o.preventDefault) preventDefault(event); //Prevent scrolling
+            //check whether the user is trying to scroll vertically
+            if (isScrolling === undefined && eventType !== 2) {
+                isScrolling = (Math.abs(diff.x) < Math.abs(diff.y)) && !o.preventScroll
+                if (isScrolling) {
+                    return;
+                }
+            }
+
+            if (o.move(event, start, diff, isRealScrolling)) {
+                if (o.preventDefault) {
+                    preventDefault(event); //Prevent scrolling
+                }
             }
         }
 
         function tEnd(event) {
+            if (event.isPrimary !== undefined && !event.isPrimary) return;
             eventType && getDiff(event);
 
             //IE likes to focus links after touchend.
             //Since we don't want to disable link outlines completely for accessibility reasons,
-            //we just defocus it after touch and disable the outline for `:active` links in css.
+            //we just blur it after touch and disable the outline for `:active` links in css.
             //This way the outline will remain visible when using keyboard.
             !clicksAllowed && event.target && event.target.blur && event.target.blur();
 
             //detach event listeners from the document
-            removeEvent(document, events[eventType][1], tMove, events[eventType][1] == 'touchmove' ? {passive: false} : false);
+            if (eventType !== 0) {
+                removeEvent(document, events[eventType][1], tMove, false);
+            }
             removeEvent(document, events[eventType][2], tEnd, false);
             removeEvent(document, events[eventType][3], tEnd, false);
 
-            o.end(event, start, diff, speed, isRealScrolling);
+            o.end(event, start, diff, isRealScrolling);
             isRealScrolling = false;
             isDragStarted = false;
         }
 
         function init() {
             //bind scroll
-            if (!n2const.isIOS || n2const.IOSVersion < 10) {
-                listeners.push(addEvent(document, 'scroll', function (e) {
+            listeners.push(addEvent(document, 'scroll', function (e) {
+                if (window.nextendScrollFocus === undefined || !window.nextendScrollFocus) {
                     isRealScrolling = true;
-                }));
+                }
+            }));
+
+            if (eventModel === 1) {
+                if (o.axis === 'y') {
+                    _this.style.touchAction = 'pan-up pan-x';
+                } else {
+                    _this.style.touchAction = 'pan-y';
+                }
             }
 
             //bind touchstart
             listeners.push(addEvent(_this, events[eventModel][0], function (e) {
                 tStart(e, eventModel);
-            }));
+            }, eventModel === 0 ? {passive: false} : false));
+
+            if (eventModel === 0) {
+                listeners.push(addEvent(_this, events[0][1], function (e) {
+                    tMove(e, 0);
+                }, {passive: false}));
+            }
+
             //prevent stuff from dragging when using mouse
             listeners.push(addEvent(_this, 'dragstart', preventDefault));
 
             //bind mousedown if necessary
             if (o.mouse && !eventModel) {
-                listeners.push(addEvent(_this, events[3][0], function (e) {
-                    tStart(e, 3);
+                listeners.push(addEvent(_this, events[2][0], function (e) {
+                    tStart(e, 2);
                 }));
             }
 
@@ -1724,6 +1803,7 @@ N2D('EventBurrito', function ($, undefined) {
 
         //expose the API
         return {
+            supportsPointerEvents: support.pointerEvents,
             getClicksAllowed: function () {
                 return clicksAllowed;
             },

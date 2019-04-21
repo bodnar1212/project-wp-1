@@ -9,7 +9,7 @@ class N2SmartsliderConflictsModel extends N2SmartsliderConflictsModelAbstract {
         $this->testPluginForgetAboutShortcodeButtons();
         $this->testPluginWPHideAndSecurity();
         $this->testPluginNetbaseWidgetsForSiteOrigin();
-        $this->testPluginDivi();
+        $this->testPluginNavMenuAddonForElementor();
     }
 
     /**
@@ -54,13 +54,14 @@ class N2SmartsliderConflictsModel extends N2SmartsliderConflictsModelAbstract {
     }
 
     /**
-     * Divi plugin
-     * @url https://www.elegantthemes.com/plugins/divi-builder/
+     * NavMenu Addon For Elementor
+     * @url https://wordpress.org/plugins/navmenu-addon-for-elementor/
      */
-    private function testPluginDivi() {
-        if (function_exists('et_is_builder_plugin_active') && et_is_builder_plugin_active()) {
-            $this->displayConflict('Divi Builder plugin', n2_('Divi standalone plugin is not compatible with Smart Slider overwrites the CSS code of the sliders. Divi theme works fine.'), 'https://smartslider3.helpscoutdocs.com/article/55-wordpress-installation');
+    private function testPluginNavMenuAddonForElementor() {
+        if (defined('ELEMENTOR_MENUS_VERSION')) {
+            $this->displayConflict('NavMenu Addon For Elementor', n2_('This plugin has a JavaScript error which might break Smart Slider.'), 'https://wordpress.org/support/topic/plugin-causes-javascript-error-and-breaks-others/');
 
         }
     }
 }
+

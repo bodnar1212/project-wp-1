@@ -35,17 +35,25 @@ N2D('SmartSliderMainAnimationSimple', ['SmartSliderMainAnimationAbstract'], func
                 this.animation = this._mainAnimationCrossFade;
                 break;
             case 'vertical':
-                if (this.parameters.parallax === 0) {
-                    this.animation = this._mainAnimationVertical;
+                if (slider.backgrounds.hasFixed) {
+                    this.animation = this._mainAnimationFade;
                 } else {
-                    this.animation = this._mainAnimationVerticalParallax;
+                    if (this.parameters.parallax === 0) {
+                        this.animation = this._mainAnimationVertical;
+                    } else {
+                        this.animation = this._mainAnimationVerticalParallax;
+                    }
                 }
                 break;
             case 'vertical-reversed':
-                if (this.parameters.parallax === 0) {
-                    this.animation = this._mainAnimationVerticalReversed;
+                if (slider.backgrounds.hasFixed) {
+                    this.animation = this._mainAnimationFade;
                 } else {
-                    this.animation = this._mainAnimationVerticalReversedParallax;
+                    if (this.parameters.parallax === 0) {
+                        this.animation = this._mainAnimationVerticalReversed;
+                    } else {
+                        this.animation = this._mainAnimationVerticalReversedParallax;
+                    }
                 }
                 break;
             case 'horizontal-reversed':
@@ -624,13 +632,13 @@ N2D('SmartSliderMainAnimationSimple', ['SmartSliderMainAnimationAbstract'], func
         if (this.isTouch && this.isReverseAllowed && parallaxOverlap === 0) {
             var reverseSlideIndex = reversed ? currentSlide.index + 1 : currentSlide.index - 1;
             if (reverseSlideIndex < 0) {
-                if (this.slider.parameters.carousel) {
+                if (this.slider.parameters.carousel && !this.slider.blockCarousel) {
                     reverseSlideIndex = this.slider.slides.length - 1;
                 } else {
                     reverseSlideIndex = currentSlide.index;
                 }
             } else if (reverseSlideIndex >= this.slider.slides.length) {
-                if (this.slider.parameters.carousel) {
+                if (this.slider.parameters.carousel && !this.slider.blockCarousel) {
                     reverseSlideIndex = 0;
                 } else {
                     reverseSlideIndex = currentSlide.index;
@@ -785,7 +793,7 @@ N2D('SmartSliderResponsiveSimple', ['SmartSliderResponsive'], function ($, undef
 
         this._sliderVertical = this.addVerticalElement(this.sliderElement, ['marginTop', 'marginBottom'], 'h');
         this.addHorizontalElement(this.sliderElement, ['fontSize'], 'fontRatio', 'slider');
-        this.addVerticalElement(this.sliderElement.find('.n2-ss-slider-1'), ['height', 'paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth'], 'h', 'slider');
+        this.addVerticalElement(this.sliderElement.find('.n2-ss-slider-1'), ['height', 'paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth'], 'h', 'slider1');
 
         this.addHorizontalElement(this.sliderElement.find('.n2-ss-slide'), ['width'], 'w', 'slideouter');
 
@@ -830,6 +838,15 @@ N2D('SmartSliderResponsiveSimple', ['SmartSliderResponsive'], function ($, undef
                 this.videoPlayerError(video);
             }
         }
+    };
+
+    SmartSliderResponsiveSimple.prototype.resizeVerticalElements = function (ratios, timeline, duration) {
+        N2Classes.SmartSliderResponsive.prototype.resizeVerticalElements.apply(this, arguments);
+
+        /**
+         * Proper slider height needed for widgets to calculate vertical positions
+         */
+        this.responsiveDimensions.slider.height = this.responsiveDimensions.slider1.height + this.responsiveDimensions.slider1.paddingTop + this.responsiveDimensions.slider1.paddingBottom;
     };
 
     SmartSliderResponsiveSimple.prototype.videoPlayerError = function (video) {
@@ -940,7 +957,7 @@ N2D('SmartSliderSimple', ['SmartSliderAbstract'], function ($, undefined) {
 
     SmartSliderSimple.prototype.initMainAnimation = function () {
 
-        if (nModernizr.csstransforms3d && nModernizr.csstransformspreserve3d && this.parameters.bgAnimations) {
+        if (!this.disabled.backgroundAnimations && nModernizr.csstransforms3d && nModernizr.csstransformspreserve3d && this.parameters.bgAnimations) {
             this.mainAnimation = new N2Classes.SmartSliderFrontendBackgroundAnimation(this, this.parameters.mainanimation, this.parameters.bgAnimations);
         } else {
             this.mainAnimation = new N2Classes.SmartSliderMainAnimationSimple(this, this.parameters.mainanimation);

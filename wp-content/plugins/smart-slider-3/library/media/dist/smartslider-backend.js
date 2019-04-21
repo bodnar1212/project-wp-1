@@ -89,7 +89,7 @@ N2D('Zoom', function ($, undefined) {
         };
         /**
          *
-         * @type {SmartSliderResponsive[]}
+         * @type {N2Classes.SmartSliderResponsive[]}
          */
         this.responsives = [];
 
@@ -242,6 +242,8 @@ N2D('Zoom', function ($, undefined) {
 
                 this.zoom.nUISlider("option", 'value', v);
             }
+
+            $(window).trigger('resize');
         }
     };
 
@@ -324,7 +326,7 @@ N2D('CreateSlider', function ($, undefined) {
 
         }, this));
 
-        if (window.location.hash.substring(1) == 'createslider') {
+        if (window.location.hash.substring(1) === 'createslider') {
             this.showModal();
         }
     }
@@ -350,7 +352,7 @@ N2D('CreateSlider', function ($, undefined) {
                 name: n2_('Thumbnail - horizontal'),
                 image: '$ss$/admin/images/sliderpresets/thumbnailhorizontal.png'
             });
-            var size = [550, 390 + 130];
+            var size = [550, 540];
         
 
             this.createSliderModal = new N2Classes.NextendModal({
@@ -387,10 +389,14 @@ N2D('CreateSlider', function ($, undefined) {
                             sliderHeight.parent().addClass('n2-form-element-autocomplete');
 
                             this.createHeading(n2_('Preset')).appendTo(this.content);
-                            var imageRadioHeight = 100
+                            var imageRadioHeight = 120
                         
                             var imageRadio = this.createImageRadio(presets)
-                                    .css('height', imageRadioHeight)
+                                    .css({
+                                        height: imageRadioHeight,
+                                        display: 'flex',
+                                        flexWrap: 'wrap'
+                                    })
                                     .appendTo(this.content),
                                 sliderPreset = imageRadio.find('input');
                             imageRadio.css('overflow', 'hidden');
@@ -2245,11 +2251,11 @@ N2D('QuickSlides', function ($, undefined) {
                                 tr = $('<tr />').appendTo(table),
                                 id = slide.data('slideid');
                             tr.append($('<td />').append('<img src="' + slide.data('image') + '" style="width:100px;"/>'));
-                            tr.append($('<td />').append(that.createInput('Name', 'title-' + id, slide.data('title'), 'width: 240px;')));
-                            tr.append($('<td />').append(that.createTextarea('Description', 'description-' + id, slide.data('description'), 'width: 330px;height:24px;')));
+                            tr.append($('<td />').append(that.createInput(n2_('Name'), 'title-' + id, slide.data('title'), 'width: 240px;')));
+                            tr.append($('<td />').append(that.createTextarea(n2_('Description'), 'description-' + id, slide.data('description'), 'width: 330px;height:24px;')));
                             var link = slide.data('link').split('|*|');
-                            tr.append($('<td />').append(that.createLink('Link', 'link-' + id, link[0], 'width: 180px;')));
-                            tr.append($('<td />').append(that.createTarget('Target window', 'target-' + id, link.length > 1 ? link[1] : '_self', '')));
+                            tr.append($('<td />').append(that.createLink(n2_('Link'), 'link-' + id, link[0], 'width: 180px;')));
+                            tr.append($('<td />').append(that.createTarget(n2_('Target window'), 'target-' + id, link.length > 1 ? link[1] : '_self', '')));
 
                             new N2Classes.FormElementUrl('link-' + id, nextend.NextendElementUrlParams);
 
@@ -2578,7 +2584,6 @@ N2D('SlidesManager', function ($, undefined) {
                     case 'post':
                         this.addQuickPost(e);
                         break;
-                    case 'library':
                     case 'empty':
                     case 'static':
                     case 'dynamic':
@@ -2587,6 +2592,14 @@ N2D('SlidesManager', function ($, undefined) {
                         } else {
                             window.location = $(e.currentTarget).data('href');
                         }
+                        break;
+                    case 'library':
+                        if (which === 2) {
+                            window.open($(e.currentTarget).data('href'), '_blank').focus();
+                        } else {
+                            window.location = $(e.currentTarget).data('href');
+                        }
+                    
                         break;
                 }
             }
@@ -2836,14 +2849,21 @@ N2D('SlidesManager', function ($, undefined) {
                                             image: data[0].thumbnail_large
                                         });
                                     }, this)).fail(function (data) {
-                                        N2Classes.Notification.error(data.responseText);
+                                        N2Classes.Notification.error('Video not found or private.');
+                                        manager._addQuickVideo(this, {
+                                            type: 'vimeo',
+                                            title: '',
+                                            description: '',
+                                            video: vimeoMatch[3],
+                                            image: ''
+                                        });
                                     });
 
                                 } else if (html5Video) {
-                                    N2Classes.Notification.error('This video url is not supported!');
+                                    N2Classes.Notification.error(n2_('This video url is not supported!'));
                                 
                                 } else {
-                                    N2Classes.Notification.error('This video url is not supported!');
+                                    N2Classes.Notification.error(n2_('This video url is not supported!'));
                                 }
                             }, this)));
                         }
@@ -3250,7 +3270,7 @@ N2D('SmartSliderSlideBackgroundAdmin', ['SmartSliderSlideBackground'], function 
      *
      * @param {N2Classes.FrontendSliderSlide} slide
      * @param {jQuery} element
-     * @param {SmartSliderBackgrounds} manager
+     * @param {N2Classes.SmartSliderBackgrounds} manager
      * @constructor
      */
     function SmartSliderSlideBackgroundAdmin(slide, element, manager) {
@@ -3336,17 +3356,17 @@ N2D('SmartSliderSlideBackgroundAdmin', ['SmartSliderSlideBackground'], function 
             .appendTo(this.$wrapElement));
 
         if (needRefresh) {
-            this.elements.color.update(this.editor.settings.getBackgroundColor(), this.editor.settings.getBackgroundGradient(), this.editor.settings.getBackgroundColorEnd());
+            this.elements.color.update(this.editor.settings.getBackgroundColor(), this.editor.settings.getBackgroundGradient(), this.editor.settings.getBackgroundColorEnd(), this.editor.settings.getBackgroundColorOverlay());
         }
     };
 
-    SmartSliderSlideBackgroundAdmin.prototype.updateColor = function (color, gradient, colorEnd) {
+    SmartSliderSlideBackgroundAdmin.prototype.updateColor = function (color, gradient, colorEnd, isOverlay) {
         if (!this.elements.color) {
             this.createColorElement();
         }
 
 
-        this.elements.color.update(color, gradient, colorEnd);
+        this.elements.color.update(color, gradient, colorEnd, isOverlay);
     };
 
     SmartSliderSlideBackgroundAdmin.prototype.createImageElement = function () {
@@ -3354,14 +3374,15 @@ N2D('SmartSliderSlideBackgroundAdmin', ['SmartSliderSlideBackground'], function 
             image = settings.getBackgroundImage();
         if (image !== '') {
             var imageUrl = nextend.imageHelper.fixed(image),
-                $image = $('<img src="' + imageUrl + '" alt="" />')
+                $image = $('<div class="n2-ss-slide-background-image"/>')
+                    .css({
+                        opacity: settings.getBackgroundImageOpacity() / 100,
+                        backgroundPosition: settings.getBackgroundFocusX() + '% ' + settings.getBackgroundFocusY() + '%'
+                    })
                     .attr({
                         'data-hash': md5(image),
                         'data-desktop': imageUrl,
-                        'data-opacity': settings.getBackgroundImageOpacity(),
-                        'data-blur': settings.getBackgroundImageBlur(),
-                        'data-x': settings.getBackgroundFocusX(),
-                        'data-y': settings.getBackgroundFocusY()
+                        'data-blur': settings.getBackgroundImageBlur()
                     })
                     .appendTo(this.$wrapElement);
             this.elements.image = new N2Classes[this.types.image](this.slide, this.manager, this, $image);
@@ -3373,7 +3394,9 @@ N2D('SmartSliderSlideBackgroundAdmin', ['SmartSliderSlideBackground'], function 
         if (this.elements.image) {
             this.elements.image.setDesktopSrc(image);
         } else if (image !== '') {
-            if (this.editor.settings.getType() === 'image') {
+            if (image.toLowerCase().match(/\.(png|jpg|jpeg|gif|webp|svg)$/) === null) {
+                N2Classes.Notification.error('The background image format is not correct! The supported image formats are: png, jpg, jpeg, gif, webp, svg.');
+            } else if (this.editor.settings.getType() === 'image') {
                 this.createImageElement(image);
             }
         }
@@ -3400,6 +3423,12 @@ N2D('EditorAbstract', function ($, undefined) {
 
         this.sliderElementID = sliderElementID;
         this.slideContentElementID = slideContentElementID;
+
+        this.readyDeferred.done($.proxy(function () {
+            N2D('SSEditor', $.proxy(function () {
+                return this;
+            }, this));
+        }, this));
 
         this.options = $.extend({
             slideAsFile: 0,
@@ -3493,12 +3522,13 @@ N2D('EditorSlide', ['EditorAbstract'], function ($, undefined) {
      * @param {string} slideContentElementID
      * @param {object} options
      * @constructor
-     * @augments {EditorAbstract}
+     * @augments {N2Classes.EditorAbstract}
      */
     function EditorSlide(sliderElementID, slideContentElementID, options) {
 
         N2Classes.EditorAbstract.prototype.constructor.call(this, sliderElementID, slideContentElementID, $.extend({
             isAddSample: false,
+            sampleSlidesUrl: '',
             slideBackgroundMode: 'fill'
         }, options));
 
@@ -3514,7 +3544,7 @@ N2D('EditorSlide', ['EditorAbstract'], function ($, undefined) {
         this.slideStartValue = this.$slideContentElement.val();
 
         N2R('#' + this.sliderElementID, $.proxy(function ($, slider) {
-            /** @type {SmartSliderAbstract} */
+            /** @type {N2Classes.SmartSliderAbstract} */
             this.frontend = slider;
             this.frontend.editor = this;
             nextend.pre = 'div#' + this.frontend.elementID + ' ';
@@ -3526,19 +3556,12 @@ N2D('EditorSlide', ['EditorAbstract'], function ($, undefined) {
     EditorSlide.prototype.sliderStarted = function () {
 
         $('body').addClass('n2-ss-slider-visible');
-        var el = $("#n2-ss-slide-canvas-container"),
-            tinyScrollbar = el.tinyscrollbar({
-                axis: "x",
-                wheel: false,
-                wheelLock: false
-            }).data('plugin_tinyscrollbar');
-        if (typeof el.get(0).move === 'function') {
-            el.get(0).move = null;
-        }
 
-        this.frontend.sliderElement.on('SliderResize', function () {
-            tinyScrollbar.update("relative");
-        });
+        this.scrollbar = new N2Classes.HorizontalScrollBar($("#n2-ss-slide-canvas-container"));
+
+        this.frontend.sliderElement.on('SliderResize', $.proxy(function () {
+            this.scrollbar.update();
+        }, this));
 
 
         this.$editedElement = this.frontend.sliderElement.find('.n2-ss-currently-edited-slide');
@@ -3558,7 +3581,7 @@ N2D('EditorSlide', ['EditorAbstract'], function ($, undefined) {
             '#slidebackgroundVideoMp4',
             '#slidebackgroundColor',
             '#slidebackgroundColorEnd',
-            '#linkslidelink-1',
+            '#slidehref',
             '#layergenerator-visible',
             '#layergroup-generator-visible'
         ]);
@@ -3659,7 +3682,7 @@ N2D('EditorSlide', ['EditorAbstract'], function ($, undefined) {
         nextend.askToSave = true;
         $('#smartslider-form').trigger('saved');
 
-        $('.n2-ss-edit-slide-top-details .n2-h1').html($('#slidetitle').val());
+        $('.n2-ss-edit-slide-top-details .n2-h1').text($('#slidetitle').val());
     };
 
     EditorSlide.prototype.prepareForm = function () {
@@ -3735,13 +3758,10 @@ N2D('EditorSlide', ['EditorAbstract'], function ($, undefined) {
     };
 
     EditorSlide.prototype.startSampleSlides = function () {
-        var sampleSlidesUrl = 'https://smartslider3.com/slides/' + window.N2SS3VERSION + '/free/';
-    
 
         var that = this,
-            eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
-
-        var $iframe = $('<iframe src="' + sampleSlidesUrl + '"></iframe>').prependTo('.n2-ss-sample-slides-container'),
+            eventMethod = window.addEventListener ? "addEventListener" : "attachEvent",
+            $iframe = $('<iframe src="' + this.options.sampleSlidesUrl + '"></iframe>').prependTo('.n2-ss-sample-slides-container'),
             iframe = $iframe[0];
 
         $('html, body').scrollTop($iframe.offset().top - $('#wpadminbar').height());
@@ -3838,7 +3858,7 @@ N2D('EditorSlide', ['EditorAbstract'], function ($, undefined) {
                 }),
             cb3 = function (e) {
                 var color = $colorField.val();
-                if (color != $color.val()) {
+                if (color !== $color.val()) {
                     $color.n2spectrum("set", color);
                 }
             };
@@ -3848,7 +3868,7 @@ N2D('EditorSlide', ['EditorAbstract'], function ($, undefined) {
 
         var $gradientDir = $('#slidebackgroundGradient'),
             cb4 = function () {
-                if ($gradientDir.val() == 'off') {
+                if ($gradientDir.val() === 'off') {
                     $settings.removeClass('n2-ss-has-gradient');
                 } else {
                     $settings.addClass('n2-ss-has-gradient');
@@ -3935,7 +3955,7 @@ N2D('EditorSlide', ['EditorAbstract'], function ($, undefined) {
     };
 
     /**
-     * @returns {FrontendSliderSlide}
+     * @returns {N2Classes.FrontendSliderSlide}
      */
     EditorSlide.prototype.getFrontendSlide = function () {
         return this.editedInstance;
@@ -3965,13 +3985,13 @@ N2D('Generator', ['EditorAbstract'], function ($, undefined) {
     /**
      * @memberOf N2Classes
      *
-     * @param {EditorAbstract} editor
+     * @param {N2Classes.EditorAbstract} editor
      * @constructor
      */
     function Generator(editor) {
 
         /**
-         * @type {EditorAbstract}
+         * @type {N2Classes.EditorAbstract}
          */
         this.editor = editor;
         this._refreshTimeout = null;
@@ -4473,6 +4493,55 @@ N2D('Generator', ['EditorAbstract'], function ($, undefined) {
 
     return Generator;
 });
+N2D('Historical', function ($, undefined) {
+    "use strict";
+
+    /**
+     * @memberOf N2Classes
+     * @param c class
+     */
+    function Historical(c) {
+        for (var k in Historical.prototype) {
+            c.prototype[k] = Historical.prototype[k];
+        }
+    }
+
+    /**
+     * @param {N2Classes.Historical} self
+     */
+    Historical.prototype.setSelf = function (self) {
+        if (self === undefined) {
+            console.error(self);
+        }
+        if (this.self !== undefined && this.self !== this) {
+            this.self.setSelf(self);
+        }
+        /**
+         * @type {N2Classes.Historical}
+         */
+        this.self = self;
+
+        this.onSelfChange();
+    };
+
+    /**
+     * @returns {N2Classes.Historical}
+     */
+    Historical.prototype.getSelf = function () {
+        if (this.self === undefined) {
+            this.self = this;
+        } else if (this.self !== this) {
+            this.self = this.self.getSelf();
+        }
+        return this.self;
+    };
+
+    Historical.prototype.onSelfChange = function () {
+
+    };
+
+    return Historical;
+});
 N2D('History', function ($, undefined) {
     "use strict";
 
@@ -4483,7 +4552,8 @@ N2D('History', function ($, undefined) {
      */
     function History() {
         this.historyStates = 50;
-        this.enabled = this.historyStates != 0;
+        this.enabled = this.historyStates !== 0;
+        this.historyActionInProgress = false;
         this.historyAddAllowed = true;
         this.isBatched = false;
         this.currentBatch = this;
@@ -4513,12 +4583,12 @@ N2D('History', function ($, undefined) {
     }
 
     /**
-     * @returns {History}
+     * @returns {N2Classes.History}
      */
     History.get = function () {
         var history = new History();
         /**
-         * @returns {History}
+         * @returns {N2Classes.History}
          */
         History.get = function () {
             return history;
@@ -4527,7 +4597,7 @@ N2D('History', function ($, undefined) {
     };
 
     History.prototype.updateUI = function () {
-        if (this.index == 0 || this.tasks.length == 0) {
+        if (this.index === 0 || this.tasks.length === 0) {
             this.undoBTN.removeClass('n2-active');
         } else {
             this.undoBTN.addClass('n2-active');
@@ -4593,14 +4663,12 @@ N2D('History', function ($, undefined) {
      *
      * @param that
      * @param action
-     * @param undoValue
-     * @param redoValue
      * @param context
      * @returns {TaskValue}
      */
     History.prototype.addValue = function (that, action, context) {
         if (this.isEnabled()) {
-            if (this.isBatched || this.currentBatch != this) {
+            if (this.isBatched || this.currentBatch !== this) {
                 var currentBatch = this.getCurrentBatchStack();
                 for (var i = 0; i < currentBatch.length; i++) {
                     if (currentBatch[i].isEqual(that, action, context)) {
@@ -4615,7 +4683,7 @@ N2D('History', function ($, undefined) {
     };
 
     History.prototype.getCurrentBatchStack = function () {
-        if (this.currentBatch != this) {
+        if (this.currentBatch !== this) {
             return this.currentBatch.tasks;
         }
         return this.tasks[this.tasks.length - 1];
@@ -4667,6 +4735,8 @@ N2D('History', function ($, undefined) {
         if (this.throttleUndoRedo()) {
             return false;
         }
+
+        this.historyActionInProgress = true;
         this.off();
         if (this.index == -1) {
             this.index = this.tasks.length - 1;
@@ -4686,6 +4756,8 @@ N2D('History', function ($, undefined) {
             // No more undo
         }
         this.on();
+        this.historyActionInProgress = false;
+
         this.updateUI();
         return true;
     };
@@ -4697,6 +4769,8 @@ N2D('History', function ($, undefined) {
         if (this.throttleUndoRedo()) {
             return false;
         }
+
+        this.historyActionInProgress = true;
         this.off();
         if (this.index != -1) {
             if (this.index < this.tasks.length) {
@@ -4714,8 +4788,14 @@ N2D('History', function ($, undefined) {
             // No redo
         }
         this.on();
+        this.historyActionInProgress = false;
+
         this.updateUI();
         return true;
+    };
+
+    History.prototype.actionInProgress = function () {
+        return this.historyActionInProgress;
     };
 
     function Batch(parent) {
@@ -4726,18 +4806,6 @@ N2D('History', function ($, undefined) {
     Batch.prototype._add = function (task) {
         this.tasks.push(task);
         return task;
-    };
-
-    Batch.prototype.invertUndo = function () {
-        this.undo = function () {
-            for (var i = this.tasks.length - 1; i >= 0; i--) {
-                if (!this.tasks[i].undo()) {
-                    break;
-                }
-            }
-            return true;
-        };
-        return this;
     };
 
     Batch.prototype.undo = function () {
@@ -4834,7 +4902,7 @@ N2D('History', function ($, undefined) {
     };
 
     TaskValue.prototype.isEqual = function (that, action, context) {
-        if (that == this.that && action == this.undoAction) {
+        if (that === this.that && action == this.undoAction) {
             for (var i = 0; i < context.length; i++) {
                 if (context[i] != this.context[i]) {
                     return false;
@@ -4909,14 +4977,14 @@ N2D('SlideSettings', function ($, undefined) {
     /**
      * @memberOf N2Classes
      *
-     * @param {EditorSlide} editor
+     * @param {N2Classes.EditorSlide} editor
      * @param {boolean} isStatic
      * @constructor
      */
     function SlideSettings(editor, isStatic) {
 
         /**
-         * @type {EditorSlide}
+         * @type {N2Classes.EditorSlide}
          */
         this.editor = editor;
         this.isStatic = isStatic;
@@ -5015,7 +5083,7 @@ N2D('SlideSettings', function ($, undefined) {
         return data;
     };
 
-    var backgroundFields = ['thumbnail', 'background-type', 'backgroundColor', 'backgroundGradient', 'backgroundColorEnd', 'backgroundImage', 'backgroundImageOpacity', 'backgroundImageBlur', 'backgroundFocusX', 'backgroundFocusY', 'backgroundMode'];
+    var backgroundFields = ['thumbnail', 'background-type', 'backgroundColor', 'backgroundGradient', 'backgroundColorEnd', 'backgroundColorOverlay', 'backgroundImage', 'backgroundImageOpacity', 'backgroundImageBlur', 'backgroundFocusX', 'backgroundFocusY', 'backgroundMode'];
 
     SlideSettings.prototype.getBackgroundData = function () {
 
@@ -5052,9 +5120,10 @@ N2D('SlideSettings', function ($, undefined) {
 
     SlideSettings.prototype.sync_backgroundColor =
         SlideSettings.prototype.sync_backgroundGradient =
-            SlideSettings.prototype.sync_backgroundColorEnd = function () {
-                this.updateBackgroundColor();
-            };
+            SlideSettings.prototype.sync_backgroundColorEnd =
+                SlideSettings.prototype.sync_backgroundColorOverlay = function () {
+                    this.updateBackgroundColor();
+                };
 
     SlideSettings.prototype.updateBackgroundColor = function () {
 
@@ -5064,7 +5133,7 @@ N2D('SlideSettings', function ($, undefined) {
         if (gradient !== 'off') {
             colorEnd = this.getBackgroundColorEnd();
         }
-        this.slideBackground.updateColor(color, gradient, colorEnd);
+        this.slideBackground.updateColor(color, gradient, colorEnd, this.getBackgroundColorOverlay());
     };
 
     SlideSettings.prototype.sync_backgroundImage = function () {
@@ -5111,6 +5180,10 @@ N2D('SlideSettings', function ($, undefined) {
 
     SlideSettings.prototype.getBackgroundColorEnd = function () {
         return this.editor.generator.fill(this.fields.backgroundColorEnd.val());
+    };
+
+    SlideSettings.prototype.getBackgroundColorOverlay = function () {
+        return !!+this.fields.backgroundColorOverlay.val();
     };
 
     SlideSettings.prototype.getBackgroundImage = function () {
@@ -5178,9 +5251,11 @@ N2D('SmartSliderAdminSlideBackgroundColor', ['SmartSliderSlideBackgroundColor'],
     SmartSliderAdminSlideBackgroundColor.prototype = Object.create(N2Classes.SmartSliderSlideBackgroundColor.prototype);
     SmartSliderAdminSlideBackgroundColor.prototype.constructor = SmartSliderAdminSlideBackgroundColor;
 
-    SmartSliderAdminSlideBackgroundColor.prototype.update = function (color, gradient, colorEnd) {
+    SmartSliderAdminSlideBackgroundColor.prototype.update = function (color, gradient, colorEnd, isOverlay) {
         color = this.fixColor(color);
-        this.$el.css({background: '', filter: ''});
+        this.$el.css({background: ''});
+
+        this.$el.attr('data-overlay', isOverlay ? 1 : 0);
 
         if (gradient !== 'off') {
             this.updateGradient(color, gradient, colorEnd)
@@ -5198,42 +5273,22 @@ N2D('SmartSliderAdminSlideBackgroundColor', ['SmartSliderSlideBackgroundColor'],
     };
 
     SmartSliderAdminSlideBackgroundColor.prototype.updateGradient = function (color, gradient, colorEnd) {
-        this.$el.css({background: '', filter: ''});
+        this.$el.css({background: ''});
 
         colorEnd = this.fixColor(colorEnd);
 
         switch (gradient) {
             case 'horizontal':
-                this.$el
-                    .css('background', '#' + color.substr(0, 6))
-                    .css('background', '-moz-linear-gradient(left, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorEnd) + ' 100%)')
-                    .css('background', ' -webkit-linear-gradient(left, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorEnd) + ' 100%)')
-                    .css('background', 'linear-gradient(to right, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorEnd) + ' 100%)')
-                    .css('background', 'filter: progid:DXImageTransform.Microsoft.gradient( startColorstr=\'#' + color.substr(0, 6) + '\', endColorstr=\'#' + colorEnd.substr(0, 6) + '\',GradientType=1)');
+                this.$el.css('background', 'linear-gradient(to right, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorEnd) + ' 100%)');
                 break;
             case 'vertical':
-                this.$el
-                    .css('background', '#' + color.substr(0, 6))
-                    .css('background', '-moz-linear-gradient(top, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorEnd) + ' 100%)')
-                    .css('background', ' -webkit-linear-gradient(top, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorEnd) + ' 100%)')
-                    .css('background', 'linear-gradient(to bottom, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorEnd) + ' 100%)')
-                    .css('background', 'filter: progid:DXImageTransform.Microsoft.gradient( startColorstr=\'#' + color.substr(0, 6) + '\', endColorstr=\'#' + colorEnd.substr(0, 6) + '\',GradientType=0)');
+                this.$el.css('background', 'linear-gradient(to bottom, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorEnd) + ' 100%)');
                 break;
             case 'diagonal1':
-                this.$el
-                    .css('background', '#' + color.substr(0, 6))
-                    .css('background', '-moz-linear-gradient(45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorEnd) + ' 100%)')
-                    .css('background', ' -webkit-linear-gradient(45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorEnd) + ' 100%)')
-                    .css('background', 'linear-gradient(45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorEnd) + ' 100%)')
-                    .css('background', 'filter: progid:DXImageTransform.Microsoft.gradient( startColorstr=\'#' + color.substr(0, 6) + '\', endColorstr=\'#' + colorEnd.substr(0, 6) + '\',GradientType=1)');
+                this.$el.css('background', 'linear-gradient(45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorEnd) + ' 100%)');
                 break;
             case 'diagonal2':
-                this.$el
-                    .css('background', '#' + color.substr(0, 6))
-                    .css('background', '-moz-linear-gradient(-45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorEnd) + ' 100%)')
-                    .css('background', ' -webkit-linear-gradient(-45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorEnd) + ' 100%)')
-                    .css('background', 'linear-gradient(135deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorEnd) + ' 100%)')
-                    .css('background', 'filter: progid:DXImageTransform.Microsoft.gradient( startColorstr=\'#' + color.substr(0, 6) + '\', endColorstr=\'#' + colorEnd.substr(0, 6) + '\',GradientType=1)');
+                this.$el.css('background', 'linear-gradient(135deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorEnd) + ' 100%)');
                 break;
         }
     };
@@ -5258,13 +5313,13 @@ N2D('SmartSliderAdminSlideBackgroundImage', ['SmartSliderSlideBackgroundImage'],
      * @param {N2Classes.FrontendSliderSlide} slide
      * @param {N2Classes.SmartSliderBackgrounds} manager
      * @param {N2Classes.SmartSliderSlideBackground} background
-     * @param $el
+     * @param $background
      * @constructor
      * @augments N2Classes.SmartSliderSlideBackgroundColor
      */
-    function SmartSliderAdminSlideBackgroundImage(slide, manager, background, $el) {
+    function SmartSliderAdminSlideBackgroundImage(slide, manager, background, $background) {
 
-        this.hash = $el.data('hash');
+        this.hash = $background.data('hash');
 
         N2Classes.SmartSliderSlideBackgroundImage.prototype.constructor.apply(this, arguments);
         this.loadAllowed = true;
@@ -5397,7 +5452,6 @@ N2D('SmartSliderAdminSlideBackgroundImage', ['SmartSliderSlideBackgroundImage'],
 
     SmartSliderAdminSlideBackgroundImage.prototype.kill = function () {
         this.notListenImageManager();
-        this.$el.remove();
         this.$background.remove();
     };
 
@@ -5459,7 +5513,7 @@ N2D('LayerContainer', function ($, undefined) {
                         break;
                 }
             }
-            /** @type {ComponentAbstract} */
+            /** @type {N2Classes.ComponentAbstract} */
             var component;
             switch (type) {
                 case 'layer':
@@ -5546,7 +5600,8 @@ N2D('LayerContainer', function ($, undefined) {
 
     LayerContainer.prototype.insertLayerAt = function (layer, index) {
 
-        var layers = this.getSortedLayers();
+        var layers = this.getSortedLayers(),
+            oldGroup = layer.group;
 
         var layerIndex = $.inArray(layer, layers);
         if (layerIndex > -1 && layerIndex < index) {
@@ -5561,6 +5616,10 @@ N2D('LayerContainer', function ($, undefined) {
         }
 
         this.syncLayerRow(layer);
+
+        if (oldGroup !== this.component) {
+            oldGroup.onChildCountChange();
+        }
     };
 
     LayerContainer.prototype.syncLayerRow = function (layer) {
@@ -5975,7 +6034,7 @@ N2D('LayerDataStorage', function ($, undefined) {
     };
 
     /**
-     * @param {LayerAdvancedProperty} advancedProperty
+     * @param {N2Classes.LayerAdvancedProperty} advancedProperty
      * @param $layer
      * @param scope
      */
@@ -6159,7 +6218,7 @@ N2D('FragmentEditor', function ($, undefined) {
     /**
      * @memberOf N2Classes
      *
-     * @param {EditorAbstract} editor
+     * @param {N2Classes.EditorAbstract} editor
      * @param jQuery $editedElement
      * @param configuration
      * @param options
@@ -6169,7 +6228,7 @@ N2D('FragmentEditor', function ($, undefined) {
         this.mode = 'desktopPortrait';
 
         /**
-         * @type {EditorAbstract}
+         * @type {N2Classes.EditorAbstract}
          */
         this.editor = editor;
         this.$editedElement = $editedElement;
@@ -6193,7 +6252,7 @@ N2D('FragmentEditor', function ($, undefined) {
         this.ui = new N2Classes.CanvasUserInterface(this);
 
         /**
-         * @type {MainContainer}
+         * @type {N2Classes.MainContainer}
          */
         this.mainContainer = new N2Classes.MainContainer(this);
 
@@ -6204,7 +6263,7 @@ N2D('FragmentEditor', function ($, undefined) {
         this._initDeviceModeChange();
 
         /**
-         * @type {CanvasSettings}
+         * @type {N2Classes.CanvasSettings}
          */
         this.canvasSettings = new N2Classes.CanvasSettings(this);
 
@@ -6531,7 +6590,6 @@ N2D('FragmentEditor', function ($, undefined) {
                     this.layerOptions.changeActiveComponentPlacement(current, nextActiveLayer.property);
                 }, this)
             });
-
         }
 
         this.$.trigger('activeLayerChanged');
@@ -6973,6 +7031,8 @@ N2D('FragmentEditor', function ($, undefined) {
                 // If the single layer is already in a group, we just activate that group
                 if (activeLayer.group instanceof N2Classes.Group) {
                     activeLayer.group.activate();
+                } else if (activeLayer instanceof N2Classes.Content || activeLayer instanceof N2Classes.Col) {
+                    // Do nothing for content and Col layers
                 } else {
                     group = new N2Classes.Group(this, this.mainContainer, {}, null);
                     group.create();
@@ -7206,7 +7266,7 @@ N2D('CanvasUserInterface', function ($, undefined) {
             currentLayer = currentLayer.group;
         } while (currentLayer !== this.fragmentEditor.mainContainer);
 
-        if (top < scrollTop || top > scrollTop + this.paneLeft.height() - 40) {
+        if (top < scrollTop || top > scrollTop + this.paneLeft.height() - 32) {
             this.paneLeft.scrollTop(top);
             this.paneRight.scrollTop(top);
         }
@@ -7220,24 +7280,24 @@ N2D('CanvasUserInterface', function ($, undefined) {
         var cb = $.proxy(function (e) {
             var top = this.paneLeft.scrollTop();
             if (e.originalEvent.deltaY > 0) {
-                top += 40;
+                top += 32;
             } else {
-                top -= 40;
+                top -= 32;
             }
-            top = Math.round(top / 40) * 40;
+            top = Math.round(top / 32) * 32;
             this.paneLeft.scrollTop(top);
             this.paneRight.scrollTop(top);
             e.preventDefault();
         }, this);
 
-        this.paneLeft.on('mousewheel', cb);
+        this.paneLeft.on('wheel', cb);
         this.paneLeft.on('scroll', $.proxy(function (e) {
             var top = this.paneLeft.scrollTop();
             this.paneRight.scrollTop(top);
             e.preventDefault();
         }, this));
 
-        this.paneRight.on('mousewheel', cb);
+        this.paneRight.on('wheel', cb);
     };
 
     CanvasUserInterface.prototype.resizeStart = function (e) {
@@ -7276,7 +7336,7 @@ N2D('CanvasUserInterface', function ($, undefined) {
     };
 
     CanvasUserInterface.prototype.__calculateDesiredHeight = function (h) {
-        return Math.round(Math.min(Math.max(40, h), (window.innerHeight || document.documentElement.clientHeight) / 2) / 40) * 40 + 48;
+        return Math.round(Math.min(Math.max(32, h), (window.innerHeight || document.documentElement.clientHeight) / 2) / 32) * 32 + 48;
     };
 
 
@@ -7509,13 +7569,8 @@ N2D('LayerWindow', function ($, undefined) {
         };
 
         for (var k in this.viewPanes) {
-            this.viewPanes[k].on('DOMMouseScroll mousewheel', function (e) {
-                var up = false;
-                if (e.originalEvent) {
-                    if (e.originalEvent.wheelDelta) up = e.originalEvent.wheelDelta / -1 < 0;
-                    if (e.originalEvent.deltaY) up = e.originalEvent.deltaY < 0;
-                    if (e.originalEvent.detail) up = e.originalEvent.detail < 0;
-                }
+            this.viewPanes[k].on('wheel', function (e) {
+                var up = e.originalEvent.deltaY < 0;
 
                 var prevent = function () {
                     e.stopPropagation();
@@ -7883,7 +7938,7 @@ N2D('Ruler', function ($, undefined) {
     /**
      * @memberOf N2Classes
      *
-     * @param {EditorAbstract} editor
+     * @param {N2Classes.EditorAbstract} editor
      * @param stored
      * @constructor
      */
@@ -7897,8 +7952,8 @@ N2D('Ruler', function ($, undefined) {
 
         this.scale = 10;
 
-        this.vertical = $('<div class="n2-ruler n2-ruler-vertical unselectable"></div>').appendTo('.n2-ss-slider-real-container');
-        this.horizontal = $('<div class="n2-ruler n2-ruler-horizontal unselectable"></div>').appendTo(this.container);
+        this.vertical = $('<div class="n2-ruler n2-ruler-vertical n2-unselectable"></div>').appendTo('.n2-ss-slider-real-container');
+        this.horizontal = $('<div class="n2-ruler n2-ruler-horizontal n2-unselectable"></div>').appendTo(this.container);
 
         this.verticalSpans = $();
         this.horizontalSpans = $();
@@ -8095,7 +8150,7 @@ N2D('Ruler', function ($, undefined) {
 
     /**
      *
-     * @param {Ruler} ruler
+     * @param {N2Classes.Ruler} ruler
      * @param {jQuery} container
      * @param e
      * @constructor
@@ -8205,13 +8260,13 @@ N2D('CanvasSettings', function ($, undefined) {
     /**
      * @memberOf N2Classes
      *
-     * @param {FragmentEditor} fragmentEditor
+     * @param {N2Classes.FragmentEditor} fragmentEditor
      * @constructor
      */
     function CanvasSettings(fragmentEditor) {
 
         /**
-         * @type {FragmentEditor}
+         * @type {N2Classes.FragmentEditor}
          */
         this.fragmentEditor = fragmentEditor;
 
@@ -8308,12 +8363,1293 @@ N2D('CanvasSettings', function ($, undefined) {
             editor.toggleClass('n2-ss-lock-guides', value == 1);
         }, this));
 
-        this._addAction('Clear Guides', $.proxy(function () {
+        this._addAction(n2_('Clear Guides'), $.proxy(function () {
             this.ruler.clearGuides();
         }, this))
     };
 
     return CanvasSettings;
+});
+N2D('nUICanvasItem', ['nUIMouse'], function ($, undefined) {
+    "use strict";
+
+    /**
+     * @memberOf N2Classes
+     *
+     * @class
+     * @constructor
+     * @augments nUIMouse
+
+     * @this nUICanvasItem
+     */
+    function nUICanvasItem(element, options) {
+        this.element = $(element);
+
+        this.widgetName = this.widgetName || 'nUICanvasItem';
+        this.widgetEventPrefix = "canvasItem";
+
+        this.options = $.extend({
+            canvasUIManager: null,
+            layer: false,
+            $layer: null,
+            distance: 2,
+            onCreate: function () {
+
+            }
+        }, this.options, options);
+
+        N2Classes.nUIMouse.prototype.constructor.apply(this, arguments);
+
+        this.create();
+    }
+
+    nUICanvasItem.prototype = Object.create(N2Classes.nUIMouse.prototype);
+    nUICanvasItem.prototype.constructor = nUICanvasItem;
+
+    nUICanvasItem.prototype.create = function () {
+
+        if (typeof this.options.$layer === 'function') {
+            this.options.$layer = this.options.$layer.call(this, this);
+        }
+
+        this._mouseInit();
+    };
+    nUICanvasItem.prototype._mouseCapture = function (event, overrideHandle) {
+        return this.options.canvasUIManager._mouseCapture(this.options, event, overrideHandle);
+    };
+
+    nUICanvasItem.prototype._mouseStart = function (event, overrideHandle, noActivation) {
+        this._trigger('start');
+        return this.options.canvasUIManager._mouseStart(this.options, event, overrideHandle, noActivation);
+    };
+
+    nUICanvasItem.prototype._mouseDrag = function (event) {
+        return this.options.canvasUIManager._mouseDrag(this.options, event);
+    };
+
+    nUICanvasItem.prototype._mouseStop = function (event, noPropagation) {
+        return this.options.canvasUIManager._mouseStop(this.options, event, noPropagation);
+
+    };
+
+    nUICanvasItem.prototype._destroy = function () {
+        this._mouseDestroy();
+
+        return this;
+    };
+
+    N2Classes.nUIWidgetBase.register('nUICanvasItem');
+
+    return nUICanvasItem;
+});
+N2D('nUICanvas', ['nUIWidgetBase'], function ($, undefined) {
+    "use strict";
+
+    /**
+     * @memberOf N2Classes
+     *
+     * @class
+     * @constructor
+     * @augments nUIWidgetBase
+
+     * @this nUICanvas
+     */
+    function nUICanvas(element, options) {
+        this.element = $(element);
+
+        this.widgetName = this.widgetName || 'nUICanvas';
+        this.widgetEventPrefix = "canvas";
+
+        this.options = $.extend({
+            mainContainer: null,
+            display: false,
+        }, this.options, options);
+
+        N2Classes.nUIWidgetBase.prototype.constructor.apply(this, arguments);
+    }
+
+    nUICanvas.prototype = Object.create(N2Classes.nUIWidgetBase.prototype);
+    nUICanvas.prototype.constructor = nUICanvas;
+
+    nUICanvas.plugins = {};
+
+    nUICanvas.prototype._mouseCapture = function (itemOptions, event, overrideHandle) {
+        return $(event.target).closest(".nui-resizable-handle, .nui-normal-sizing-handle, .nui-spacing-handle").length == 0;
+    };
+
+    nUICanvas.prototype._mouseStart = function (itemOptions, event, overrideHandle, noActivation) {
+
+        $('body').addClass('n2-ss-move-layer');
+
+        this.dragDeferred = $.Deferred();
+        this.options.mainContainer.fragmentEditor.layerWindow.hideWithDeferred(this.dragDeferred);
+
+        this.context = {
+            placeholder: $('<div class="n2-ss-layer-placeholder" />'),
+            mouse: {
+                offset: {
+                    left: event.pageX,
+                    top: event.pageY
+                }
+            },
+            canvas: {
+                offset: this.options.mainContainer.layer.offset(),
+                size: {
+                    width: this.options.mainContainer.layer.outerWidth(),
+                    height: this.options.mainContainer.layer.outerHeight()
+                }
+            },
+            $layer: itemOptions.$layer
+        };
+
+        var css = {
+            position: 'absolute',
+            right: 'auto',
+            bottom: 'auto'
+        };
+
+        if (!itemOptions.layer) {
+            this.startMode = 'create';
+
+            this.context.layer = {
+                offset: {
+                    left: 0,
+                    top: 0
+                }
+            };
+
+            itemOptions.$layer.appendTo('body');
+        } else {
+            this.startMode = itemOptions.layer.placement.getType();
+
+            this.context.layer = {
+                offset: itemOptions.$layer.offset()
+            };
+
+            this.context.originalIndex = itemOptions.layer.getIndex();
+
+            if (this.startMode == 'normal') {
+
+                css.width = itemOptions.$layer.width();
+                //css.height = itemOptions.$layer.height();
+
+                itemOptions.$layer.appendTo(this.options.mainContainer.layer);
+            }
+        }
+
+        itemOptions.$layer
+            .addClass('n2-canvas-item-drag')
+            .css(css);
+
+        this._cacheMargins(itemOptions.$layer);
+
+        this.context.size = {
+            width: itemOptions.$layer.outerWidth(),
+            height: itemOptions.$layer.outerHeight()
+        };
+
+
+        this.context.droppables = this.options.mainContainer.getDroppables(itemOptions.layer);
+
+        this._cacheContainers();
+
+        this._trigger("start", event, {
+            layer: itemOptions.layer,
+            mode: this.startMode
+        });
+
+        this._mouseDrag(itemOptions, event);
+    };
+
+    nUICanvas.prototype._mouseDrag = function (itemOptions, event) {
+        var position;
+        if (this.startMode == 'create') {
+            position = {
+                top: event.pageY - this.context.canvas.offset.top - 20,
+                left: event.pageX - this.context.canvas.offset.left - 20
+            };
+        } else {
+            position = {
+                top: this.context.layer.offset.top - this.context.canvas.offset.top + event.pageY - this.context.mouse.offset.top,
+                left: this.context.layer.offset.left - this.context.canvas.offset.left + event.pageX - this.context.mouse.offset.left
+            };
+        }
+
+        var targetContainer = this._findInnerContainer(event);
+        if (targetContainer === false && this.startMode != 'create') {
+            targetContainer = this.context.droppables[0];
+        }
+        if (targetContainer) {
+            if (targetContainer.placement == 'normal') {
+
+                if (typeof targetContainer.layers === "undefined") {
+                    targetContainer.layers = this._cacheContainerLayers(targetContainer);
+                }
+
+                var targetIndex = this._findNormalIndex(event, targetContainer);
+                if (targetIndex > 0) {
+                    this.context.placeholder.css('order', targetContainer.layers[targetIndex - 1].layer.layer.css('order'));
+                    this.context.placeholder.insertAfter(targetContainer.layers[targetIndex - 1].layer.layer);
+                } else {
+                    this.context.placeholder.css('order', 0);
+                    this.context.placeholder.prependTo(targetContainer.$container);
+                }
+
+                this.context.targetIndex = targetIndex;
+            } else {
+                this.context.placeholder.detach();
+            }
+        } else {
+            this.context.placeholder.detach();
+        }
+
+        this.context.targetContainer = targetContainer;
+
+
+        this._trigger("drag", event, {
+            layer: itemOptions.layer,
+            originalOffset: this.context.layer.offset,
+            position: position,
+            canvasOffset: this.context.canvas.offset,
+            offset: {
+                left: position.left + this.context.canvas.offset.left,
+                top: position.top + this.context.canvas.offset.top
+            }
+        });
+
+        if (this.startMode == 'create') {
+            position.left += this.context.canvas.offset.left;
+            position.top += this.context.canvas.offset.top;
+        }
+
+        itemOptions.$layer.css(position);
+
+        this._displayPosition(event, position);
+    };
+
+    nUICanvas.prototype._mouseStop = function (itemOptions, event, noPropagation) {
+        this.context.placeholder.remove();
+
+        var targetIndex = this.context.targetIndex,
+            targetContainer = this.context.targetContainer;
+
+        itemOptions.$layer
+            .removeClass('n2-canvas-item-drag');
+
+        if (this.startMode == 'create') {
+            if (targetContainer) {
+                itemOptions.onCreate.call(this, event, itemOptions, targetContainer, targetIndex);
+            }
+            itemOptions.$layer.detach();
+
+        } else {
+            if (targetContainer === undefined) {
+                targetContainer = this.options.mainContainer.layer;
+            }
+
+            if (this.startMode == 'absolute' && targetContainer.placement == 'absolute') {
+
+                // Simple drag on the canvas on an absolute layer. Just update its position!
+                var left = parseInt(itemOptions.$layer.css('left')),
+                    top = parseInt(itemOptions.$layer.css('top'));
+
+                itemOptions.$layer.css({
+                    position: '',
+                    right: '',
+                    bottom: '',
+                });
+
+                itemOptions.layer.placement.current.setPosition(left, top);
+
+            } else if (targetContainer.placement == 'absolute') {
+
+                // Layer moved from a normal container to the canvas.
+
+                var left = parseInt(itemOptions.$layer.css('left')),
+                    top = parseInt(itemOptions.$layer.css('top'));
+
+                itemOptions.$layer.css({
+                    position: '',
+                    right: '',
+                    bottom: '',
+                });
+
+                var width = itemOptions.$layer.width(),
+                    height = itemOptions.$layer.height();
+
+                itemOptions.layer.group.onChildCountChange();
+
+                var oldAbsoluteGroup = itemOptions.layer;
+                while (oldAbsoluteGroup && (!oldAbsoluteGroup.placement || oldAbsoluteGroup.placement.getType() !== 'absolute')) {
+                    oldAbsoluteGroup = oldAbsoluteGroup.group;
+                }
+
+                N2Classes.History.get().startBatch();
+                // Set the new group, which will trigger this current placement to activate
+                itemOptions.layer.changeGroup(this.context.originalIndex, this.options.mainContainer);
+                N2Classes.History.get().addControl('skipForwardUndos');
+
+                if (itemOptions.layer.type == 'layer' && itemOptions.layer.item) {
+                    if (!itemOptions.layer.item.needSize) {
+                        height = 'auto';
+                        width++; //Prevent text layers to wrap line ending to new line after drag
+                    }
+                }
+
+                // As this placement activated, we have to set these values from the closest absolute parent
+                var targetAlign = oldAbsoluteGroup ? oldAbsoluteGroup.getProperty('align') : 'center',
+                    targetValign = oldAbsoluteGroup ? oldAbsoluteGroup.getProperty('valign') : 'middle';
+
+                itemOptions.layer.placement.current._setPosition(targetAlign, targetValign, left, top, width, height, true);
+
+                N2Classes.History.get().endBatch();
+
+            } else if (targetContainer.placement == 'normal') {
+                itemOptions.$layer.css({
+                    position: 'relative',
+                    width: '',
+                    left: '',
+                    top: ''
+                });
+
+                switch (targetContainer.layer.type) {
+
+                    case 'content':
+                    case 'col':
+                        if (targetIndex > 0) {
+                            itemOptions.$layer.insertAfter(targetContainer.layers[targetIndex - 1].layer.layer);
+                        } else {
+                            itemOptions.$layer.prependTo(targetContainer.$container);
+                        }
+
+                        itemOptions.layer.onCanvasUpdate(this.context.originalIndex, targetContainer.layer, targetIndex);
+                        break;
+
+                    case 'row':
+                        var col = targetContainer.layer.createCol();
+                        targetContainer.layer.moveCol(col.getIndex(), targetIndex);
+
+                        itemOptions.$layer.prependTo(col.$content);
+                        itemOptions.layer.onCanvasUpdate(this.context.originalIndex, col, 0);
+
+                        break;
+                }
+
+                //itemOptions.layer.placement.current._syncheight(); // we should sync back the height of the normal layer
+            }
+        }
+
+        delete this.context;
+
+        if (this.options.display) {
+            this.options.display.hide();
+        }
+
+        this._trigger("stop", event, {
+            layer: itemOptions.layer
+        });
+
+        this.dragDeferred.resolve();
+
+
+        $('body').removeClass('n2-ss-move-layer');
+    };
+
+    nUICanvas.prototype.cancel = function (itemOptions) {
+    };
+
+    nUICanvas.prototype._cacheContainers = function () {
+        for (var i = 0; i < this.context.droppables.length; i++) {
+            var obj = this.context.droppables[i];
+            obj.offset = obj.$container.offset();
+            obj.size = {
+                width: obj.$container.outerWidth(),
+                height: obj.$container.outerHeight()
+            };
+            obj.offset.right = obj.offset.left + obj.size.width;
+            obj.offset.bottom = obj.offset.top + obj.size.height;
+        }
+    };
+
+    nUICanvas.prototype._findInnerContainer = function (event) {
+        for (var i = this.context.droppables.length - 1; i >= 0; i--) {
+            var obj = this.context.droppables[i];
+            if (obj.offset.left <= event.pageX && obj.offset.right >= event.pageX && obj.offset.top <= event.pageY && obj.offset.bottom >= event.pageY) {
+                return obj;
+            }
+        }
+        return false;
+    };
+
+    nUICanvas.prototype._cacheContainerLayers = function (droppable) {
+        var layerObjects = [],
+            layers = droppable.layer.container.getSortedLayers();
+
+        for (var i = 0; i < layers.length; i++) {
+            var obj = {
+                layer: layers[i]
+            };
+            obj.offset = obj.layer.layer.offset();
+            obj.size = {
+                width: obj.layer.layer.outerWidth(),
+                height: obj.layer.layer.outerHeight()
+            };
+            obj.offset.right = obj.offset.left + obj.size.width / 2;
+            obj.offset.bottom = obj.offset.top + obj.size.height / 2;
+            layerObjects.push(obj);
+        }
+
+        return layerObjects;
+    };
+
+    nUICanvas.prototype._findNormalIndex = function (event, targetContainer) {
+        var index = -1;
+
+        switch (targetContainer.axis) {
+            case 'y':
+                for (var i = 0; i < targetContainer.layers.length; i++) {
+                    var obj = targetContainer.layers[i];
+                    if (event.pageY <= obj.offset.bottom) {
+                        index = i;
+                        break;
+                    }
+                }
+                break;
+            case 'x':
+                for (var i = 0; i < targetContainer.layers.length; i++) {
+                    var obj = targetContainer.layers[i];
+                    if (event.pageX <= obj.offset.right) {
+                        index = i;
+                        break;
+                    }
+                }
+                break;
+        }
+
+        if (index === -1) {
+            index = targetContainer.layers.length;
+        }
+
+        return index;
+    };
+
+    nUICanvas.prototype._displayPosition = function (event, position) {
+
+        if (this.options.display) {
+            if (this.context.targetContainer && this.context.targetContainer.placement == 'absolute') {
+                if (this.options.display.hidden) {
+                    this.options.display.show();
+                }
+                if (this.startMode == 'create') {
+                    position.left -= this.context.canvas.offset.left;
+                    position.top -= this.context.canvas.offset.top;
+                }
+                this.options.display.update(event, position);
+            } else {
+                if (this.options.display.hidden) {
+                    this.options.display.hide();
+                }
+            }
+        }
+    };
+
+    nUICanvas.prototype._trigger = function (type, event, ui) {
+        ui = ui || {};
+
+        this.callPlugin(type, [event, ui]);
+
+
+        return N2Classes.nUIWidgetBase.prototype._trigger.apply(this, arguments);
+    };
+
+    nUICanvas.prototype._cacheMargins = function (layer) {
+        this.margins = {
+            left: ( parseInt(layer.css("marginLeft"), 10) || 0 ),
+            top: ( parseInt(layer.css("marginTop"), 10) || 0 ),
+            right: ( parseInt(layer.css("marginRight"), 10) || 0 ),
+            bottom: ( parseInt(layer.css("marginBottom"), 10) || 0 )
+        };
+    };
+
+    N2Classes.nUIWidgetBase.register('nUICanvas');
+
+
+    N2Classes.nUIWidgetBase.addPlugin(nUICanvas, "smartguides", {
+        start: function (event, ui) {
+            var inst = $(this).data("nUICanvas"), o = inst.options;
+
+            if (inst.startMode == 'create') return;
+
+            inst.gridH = $('<div class="n2-grid n2-grid-h"></div>').appendTo(o.mainContainer.layer);
+            inst.gridV = $('<div class="n2-grid n2-grid-v"></div>').appendTo(o.mainContainer.layer);
+            inst.elements = [];
+            if (typeof o.smartguides == 'function') {
+                var guides = $(o.smartguides(inst.context)).not(inst.context.$layer);
+                if (guides && guides.length) {
+                    guides.each(function () {
+                        var $t = $(this);
+                        var $o = $t.offset();
+                        if (this != inst.element[0]) inst.elements.push({
+                            item: this,
+                            width: $t.outerWidth(), height: $t.outerHeight(),
+                            top: Math.round($o.top), left: Math.round($o.left),
+                            backgroundColor: ''
+                        });
+                    });
+                }
+                var $o = o.mainContainer.layer.offset();
+                inst.elements.push({
+                    width: o.mainContainer.layer.width(), height: o.mainContainer.layer.height(),
+                    top: Math.round($o.top), left: Math.round($o.left),
+                    backgroundColor: '#ff4aff'
+                });
+            }
+        },
+
+        stop: function (event, ui) {
+            var inst = $(this).data("nUICanvas");
+
+            if (inst.startMode == 'create') return;
+
+            inst.gridH.remove();
+            inst.gridV.remove();
+        },
+
+        drag: function (event, ui) {
+            var vElement = false,
+                hElement = false,
+                inst = $(this).data("nUICanvas"),
+                o = inst.options,
+                verticalTolerance = o.tolerance,
+                horizontalTolerance = o.tolerance;
+
+            if (inst.startMode == 'create') return;
+
+            inst.gridH.css({"display": "none"});
+            inst.gridV.css({"display": "none"});
+
+            if (inst.context.targetContainer && inst.context.targetContainer.placement == 'absolute') {
+
+                var container = inst.elements[inst.elements.length - 1],
+                    setGridV = function (left) {
+                        inst.gridV.css({left: Math.min(left, container.width - 1), display: "block"});
+                    },
+                    setGridH = function (top) {
+                        inst.gridH.css({top: Math.min(top, container.height - 1), display: "block"});
+                    };
+
+                var ctrlKey = event.ctrlKey || event.metaKey,
+                    altKey = event.altKey;
+                if (ctrlKey && altKey) {
+                    return;
+                } else if (ctrlKey) {
+                    vElement = true;
+                } else if (altKey) {
+                    hElement = true;
+                }
+                var x1 = ui.offset.left, x2 = x1 + inst.context.size.width,
+                    y1 = ui.offset.top, y2 = y1 + inst.context.size.height,
+                    xc = (x1 + x2) / 2,
+                    yc = (y1 + y2) / 2;
+
+                if (!vElement) {
+                    for (var i = inst.elements.length - 1; i >= 0; i--) {
+                        if (verticalTolerance == 0) break;
+
+                        var l = inst.elements[i].left,
+                            r = l + inst.elements[i].width,
+                            hc = (l + r) / 2;
+
+                        var v = true,
+                            c;
+                        if ((c = Math.abs(l - x2)) < verticalTolerance) {
+                            ui.position.left = l - inst.context.size.width - inst.context.canvas.offset.left - inst.margins.left;
+                            setGridV(ui.position.left + inst.context.size.width);
+                        } else if ((c = Math.abs(l - x1)) < verticalTolerance) {
+                            ui.position.left = l - inst.context.canvas.offset.left - inst.margins.left;
+                            setGridV(ui.position.left);
+                        } else if ((c = Math.abs(r - x1)) < verticalTolerance) {
+                            ui.position.left = r - inst.context.canvas.offset.left - inst.margins.left;
+                            setGridV(ui.position.left);
+                        } else if ((c = Math.abs(r - x2)) < verticalTolerance) {
+                            ui.position.left = r - inst.context.size.width - inst.context.canvas.offset.left - inst.margins.left;
+                            setGridV(ui.position.left + inst.context.size.width);
+                        } else if ((c = Math.abs(hc - x2)) < verticalTolerance) {
+                            ui.position.left = hc - inst.context.size.width - inst.context.canvas.offset.left - inst.margins.left;
+                            setGridV(ui.position.left + inst.context.size.width);
+                        } else if ((c = Math.abs(hc - x1)) < verticalTolerance) {
+                            ui.position.left = hc - inst.context.canvas.offset.left - inst.margins.left;
+                            setGridV(ui.position.left);
+                        } else if ((c = Math.abs(hc - xc)) < verticalTolerance) {
+                            ui.position.left = hc - inst.context.size.width / 2 - inst.context.canvas.offset.left - inst.margins.left;
+                            setGridV(ui.position.left + inst.context.size.width / 2);
+                        } else {
+                            v = false;
+                        }
+
+                        if (v) {
+                            vElement = inst.elements[i];
+                            verticalTolerance = Math.min(c, verticalTolerance);
+                        }
+                    }
+                }
+
+                if (!hElement) {
+                    for (var i = inst.elements.length - 1; i >= 0; i--) {
+                        if (horizontalTolerance == 0) break;
+
+                        var t = inst.elements[i].top,
+                            b = t + inst.elements[i].height,
+                            vc = (t + b) / 2;
+
+                        var h = true,
+                            c;
+                        if ((c = Math.abs(t - y2)) < horizontalTolerance) {
+                            ui.position.top = t - inst.context.size.height - inst.context.canvas.offset.top - inst.margins.top;
+                            setGridH(ui.position.top + inst.context.size.height);
+                        } else if ((c = Math.abs(t - y1)) < horizontalTolerance) {
+                            ui.position.top = t - inst.context.canvas.offset.top - inst.margins.top;
+                            setGridH(ui.position.top);
+                        } else if ((c = Math.abs(b - y1)) < horizontalTolerance) {
+                            ui.position.top = b - inst.context.canvas.offset.top - inst.margins.top;
+                            setGridH(ui.position.top);
+                        } else if ((c = Math.abs(b - y2)) < horizontalTolerance) {
+                            ui.position.top = b - inst.context.size.height - inst.context.canvas.offset.top - inst.margins.top;
+                            setGridH(ui.position.top + inst.context.size.height);
+                        } else if ((c = Math.abs(vc - y2)) < horizontalTolerance) {
+                            ui.position.top = vc - inst.context.size.height - inst.context.canvas.offset.top - inst.margins.top;
+                            setGridH(ui.position.top + inst.context.size.height);
+                        } else if ((c = Math.abs(vc - y1)) < horizontalTolerance) {
+                            ui.position.top = vc - inst.context.canvas.offset.top - inst.margins.top;
+                            setGridH(ui.position.top);
+                        } else if ((c = Math.abs(vc - yc)) < horizontalTolerance) {
+                            ui.position.top = vc - inst.context.size.height / 2 - inst.context.canvas.offset.top - inst.margins.top;
+                            setGridH(ui.position.top + inst.context.size.height / 2);
+                        } else {
+                            h = false;
+                        }
+
+                        if (h) {
+                            hElement = inst.elements[i];
+                            horizontalTolerance = Math.min(c, horizontalTolerance);
+                        }
+                    }
+                }
+
+                if (vElement && vElement !== true) {
+                    inst.gridV.css('backgroundColor', vElement.backgroundColor);
+                }
+                if (hElement && hElement !== true) {
+                    inst.gridH.css('backgroundColor', hElement.backgroundColor);
+                }
+            }
+        }
+    });
+
+    return nUICanvas;
+});
+N2D('nUIColumns', ['nUIMouse'], function ($, undefined) {
+    "use strict";
+
+    /**
+     * @memberOf N2Classes
+     *
+     * @class
+     * @constructor
+     * @augments nUIMouse
+
+     * @this nUIColumns
+     */
+    function nUIColumns(element, options) {
+        this.active = 0;
+        this.created = false;
+        this.invalidated = false;
+
+        this.element = $(element);
+
+        this.widgetName = this.widgetName || 'nUIColumns';
+        this.widgetEventPrefix = "columns";
+
+        this.options = $.extend({
+            columns: '1',
+            gutter: 0,
+            denominators: {
+                1: 100,
+                2: 100,
+                3: 144,
+                4: 100,
+                5: 100,
+                6: 144
+            },
+            // Callbacks
+            drag: null,
+            start: null,
+            stop: null
+        }, this.options, options);
+
+        N2Classes.nUIMouse.prototype.constructor.apply(this, arguments);
+    }
+
+    nUIColumns.prototype = Object.create(N2Classes.nUIMouse.prototype);
+    nUIColumns.prototype.constructor = nUIColumns;
+
+    nUIColumns.prototype.create = function () {
+        if (!this.created) {
+            this.created = true;
+
+            this._setupHandles();
+
+            $(window).on('resize', $.proxy(this._resize, this));
+
+            this._mouseInit();
+        }
+    };
+
+    nUIColumns.prototype._destroy = function () {
+
+        this._mouseDestroy();
+        this.element
+            .removeData("uiNextendColumns")
+            .off(".columns")
+            .find("> .ui-column-width-handle")
+            .remove();
+
+        return this;
+    };
+
+    nUIColumns.prototype.getDenominator = function (i) {
+        if (this.options.denominators[i] === undefined) {
+            this.options.denominators[i] = i * 15;
+        }
+        return this.options.denominators[i];
+    };
+
+    nUIColumns.prototype._setupHandles = function () {
+        var o = this.options, handle, i, n, axis;
+
+        this.fractions = [];
+
+        var columnWidths = o.columns.split('+');
+        for (var i = 0; i < columnWidths.length; i++) {
+            this.fractions.push(new Fraction(columnWidths[i]));
+        }
+        this.currentDenominator = this.getDenominator(this.fractions.length);
+
+        var currentPercent = 0;
+        for (i = 0; i < this.fractions.length - 1; i++) {
+            axis = $("<div class='ui-column-width-handle'>");
+
+            currentPercent += this.fractions[i].valueOf() * 100;
+            axis
+                .data('i', i)
+                .data('percent', currentPercent)
+                .appendTo(this.element)
+                .on('mousedown', $.proxy(this._mouseDown, this));
+        }
+
+        this.handles = this.element.find('> .ui-column-width-handle');
+
+        this.handles.addClass('n2-unselectable');
+
+        this._resize();
+    };
+
+    nUIColumns.prototype._resize = function () {
+        if (this.active) {
+            this.paddingLeft = parseInt(this.element.css('paddingLeft'));
+            this.paddingRight = parseInt(this.element.css('paddingRight'));
+
+            var containerWidth = this.element.width();
+
+            this.outerWidth = containerWidth + this.paddingLeft + this.paddingRight;
+            this.innerWidth = containerWidth - this.handles.length * this.options.gutter;
+
+            for (var i = 0; i < this.handles.length; i++) {
+                var currentPercent = this.handles.eq(i).data('percent');
+                this._updateResizer(i, currentPercent);
+            }
+        } else {
+            this.invalidated = true;
+        }
+    };
+
+    nUIColumns.prototype._updateResizer = function (i, currentPercent) {
+        this.handles.eq(i).css({
+            left: currentPercent + '%',
+            marginLeft: -2 + this.paddingLeft + (i + 0.5) * this.options.gutter + (this.innerWidth - this.outerWidth) * currentPercent / 100
+        })
+    };
+
+    nUIColumns.prototype._removeHandles = function () {
+        this.handles.remove();
+    };
+
+    nUIColumns.prototype.setOption = function (key, value) {
+        N2Classes.nUIWidgetBase.prototype.setOption.apply(this, arguments);
+
+        switch (key) {
+            case "active":
+                this.active = value;
+                if (this.active) {
+                    this.create();
+                    if (this.invalidated) {
+                        this._resize();
+                    }
+                }
+                break;
+            case "columns":
+                if (this.created) {
+                    this._removeHandles();
+                    this._setupHandles();
+                }
+                break;
+            case "gutter":
+                this._resize();
+                break;
+        }
+    };
+
+    nUIColumns.prototype._mouseCapture = function (event) {
+        var i, handle,
+            capture = false;
+
+        for (i = 0; i < this.handles.length; i++) {
+            handle = this.handles[i];
+            if (handle === event.target) {
+                capture = true;
+            }
+        }
+
+        return !this.options.disabled && capture;
+    };
+
+    nUIColumns.prototype._mouseStart = function (event) {
+        var index = $(event.target).data('i'),
+            cLeft = this.element.offset().left + 10,
+            containerWidth = this.element.width() - 20;
+
+        this.resizeContext = {
+            index: index,
+            cLeft: cLeft,
+            containerWidth: containerWidth,
+            startX: Math.max(0, Math.min(event.clientX - cLeft, containerWidth)),
+        };
+
+        this.currentFractions = [];
+        this.currentPercent = [];
+        for (var i = 0; i < this.fractions.length; i++) {
+            this.currentFractions.push(this.fractions[i].clone());
+            this.currentPercent.push(this.fractions[i].valueOf());
+        }
+
+        this.resizing = true;
+
+        $("body").css("cursor", "ew-resize");
+
+        this.element.addClass("ui-column-width-resizing");
+        this._trigger("start", event, this.ui());
+        return true;
+    };
+
+    nUIColumns.prototype._mouseDrag = function (event) {
+
+        var currentX = Math.max(0, Math.min(event.clientX - this.resizeContext.cLeft, this.resizeContext.containerWidth)),
+            fractionDifference = new Fraction(Math.round((currentX - this.resizeContext.startX) / (this.resizeContext.containerWidth / this.currentDenominator)), this.currentDenominator);
+
+        if (fractionDifference.compare(this.fractions[this.resizeContext.index].clone().mul(-1)) < 0) {
+            fractionDifference = this.fractions[this.resizeContext.index].clone().mul(-1);
+        }
+        if (fractionDifference.compare(this.fractions[this.resizeContext.index + 1]) > 0) {
+            fractionDifference = this.fractions[this.resizeContext.index + 1].clone();
+        }
+
+        this.currentFractions[this.resizeContext.index] = this.fractions[this.resizeContext.index].add(fractionDifference);
+        this.currentFractions[this.resizeContext.index + 1] = this.fractions[this.resizeContext.index + 1].sub(fractionDifference);
+
+        var currentPercent = 0;
+        this.currentPercent = [];
+        for (var i = 0; i < this.currentFractions.length; i++) {
+            var width = this.currentFractions[i].valueOf();
+            this.currentPercent.push(width);
+            currentPercent += width * 100;
+            this._updateResizer(i, currentPercent);
+        }
+
+        this._trigger("colwidth", event, this.ui());
+    };
+
+    nUIColumns.prototype._mouseStop = function (event) {
+
+        this.resizing = false;
+
+        $("body").css("cursor", "auto");
+
+        this._trigger("stop", event, this.ui());
+
+        this.fractions = this.currentFractions;
+
+        nextend.preventMouseUp();
+        return false;
+    };
+
+    nUIColumns.prototype.ui = function () {
+        return {
+            element: this.element,
+            originalFractions: this.fractions,
+            currentFractions: this.currentFractions,
+            currentPercent: this.currentPercent,
+            index: this.resizeContext.index
+        };
+    };
+
+    N2Classes.nUIWidgetBase.register('nUIColumns');
+
+    return nUIColumns;
+});
+N2D('nUILayerListItem', ['nUIMouse'], function ($, undefined) {
+    "use strict";
+
+    /**
+     * @memberOf N2Classes
+     *
+     * @class
+     * @constructor
+     * @augments nUIMouse
+
+     * @this nUILayerListItem
+     */
+    function nUILayerListItem(element, options) {
+        this.element = $(element);
+
+        this.widgetName = this.widgetName || 'nUILayerListItem';
+        this.widgetEventPrefix = "layerListItem";
+
+        this.options = $.extend({
+            UIManager: null,
+            layer: false,
+            $layer: null,
+            distance: 2
+        }, this.options, options);
+
+        N2Classes.nUIMouse.prototype.constructor.apply(this, arguments);
+
+        this.create();
+    }
+
+    nUILayerListItem.prototype = Object.create(N2Classes.nUIMouse.prototype);
+    nUILayerListItem.prototype.constructor = nUILayerListItem;
+
+    nUILayerListItem.prototype.create = function () {
+
+        this._mouseInit();
+    };
+
+    nUILayerListItem.prototype._mouseCapture = function (event, overrideHandle) {
+        return this.options.UIManager._mouseCapture(this.options, event, overrideHandle);
+    };
+
+    nUILayerListItem.prototype._mouseStart = function (event, overrideHandle, noActivation) {
+        this._trigger('start');
+        return this.options.UIManager._mouseStart(this.options, event, overrideHandle, noActivation);
+    };
+
+    nUILayerListItem.prototype._mouseDrag = function (event) {
+        return this.options.UIManager._mouseDrag(this.options, event);
+    };
+
+    nUILayerListItem.prototype._mouseStop = function (event, noPropagation) {
+        return this.options.UIManager._mouseStop(this.options, event, noPropagation);
+
+    };
+
+    nUILayerListItem.prototype._destroy = function () {
+        this._mouseDestroy();
+        return this;
+    };
+
+    N2Classes.nUIWidgetBase.register('nUILayerListItem');
+
+    return nUILayerListItem;
+});
+N2D('nUILayerList', ['nUIWidgetBase'], function ($, undefined) {
+    "use strict";
+
+    /**
+     * @memberOf N2Classes
+     *
+     * @class
+     * @constructor
+     * @augments nUIWidgetBase
+
+     * @this nUILayerList
+     */
+    function nUILayerList(element, options) {
+        this.element = $(element);
+
+        this.widgetName = this.widgetName || 'nUILayerList';
+        this.widgetEventPrefix = "layerList";
+
+        this.options = $.extend({
+            $fixed: null,
+            $scrolled: null
+        }, this.options, options);
+
+        N2Classes.nUIWidgetBase.prototype.constructor.apply(this, arguments);
+
+        this.create();
+    }
+
+    nUILayerList.prototype = Object.create(N2Classes.nUIWidgetBase.prototype);
+    nUILayerList.prototype.constructor = nUILayerList;
+
+    nUILayerList.prototype.create = function () {
+
+        this.scrollTimeout = null;
+    };
+
+
+    nUILayerList.prototype._mouseCapture = function (itemOptions, event, overrideHandle) {
+        return true;
+    };
+
+    nUILayerList.prototype._mouseStart = function (itemOptions, event, overrideHandle, noActivation) {
+
+        this.scrolledTop = this.options.$scrolled.offset().top;
+        this.scrolledHeight = this.options.$scrolled.height();
+        this.scrolledScroll = this.options.$scrolled.scrollTop();
+        this.scrolledMaxHeight = this.options.$scrolled[0].scrollHeight - this.scrolledHeight;
+
+        $('body').addClass('n2-ss-layer-list-move-layer');
+
+        this.context = {
+            placeholder: $('<div class="nextend-sortable-placeholder"><div></div></div>'),
+            mouse: {
+                y: event.pageY,
+                topModifier: itemOptions.$item.offset().top - event.pageY
+            },
+            $item: itemOptions.$item,
+            $clone: itemOptions.$item.clone()
+        };
+
+        this.context.$clone.addClass('n2-ss-ll-dragging').appendTo(this.options.$scrolled.find('> ul'));
+
+        this.context.droppables = this.options.mainContainer.getLLDroppables(itemOptions.layer);
+
+        this._cacheContainers();
+
+        this._trigger("start", event);
+
+        this._mouseDrag(itemOptions, event);
+    };
+
+    nUILayerList.prototype._scrollUp = function () {
+        if (this.scrolledTop > 0) {
+            if (this.scrollTimeout === null) {
+                this.scrollTimeout = setInterval($.proxy(function () {
+                    this.scrolledScroll -= 30;
+                    this.options.$scrolled.scrollTop(this.scrolledScroll);
+                }, this), 100);
+                this.scrolledScroll -= 30;
+                this.options.$scrolled.scrollTop(this.scrolledScroll);
+            }
+        }
+    };
+
+    nUILayerList.prototype._scrollDown = function () {
+        if (this.scrollTimeout === null) {
+            this.scrollTimeout = setInterval($.proxy(function () {
+                this.scrolledScroll += 30;
+                this.options.$scrolled.scrollTop(Math.min(this.scrolledScroll, this.scrolledMaxHeight));
+            }, this), 100);
+            this.scrolledScroll += 30;
+            this.options.$scrolled.scrollTop(Math.min(this.scrolledScroll, this.scrolledMaxHeight));
+        }
+    };
+
+    nUILayerList.prototype._mouseDrag = function (itemOptions, event) {
+
+        this.scrolledTop = this.options.$scrolled.offset().top;
+
+        if (this.scrolledHeight > 60) {
+            if (event.pageY < this.scrolledTop + 30) {
+                this._scrollUp();
+            } else if (event.pageY > this.scrolledTop + this.scrolledHeight - 30) {
+                this._scrollDown();
+            } else {
+                clearInterval(this.scrollTimeout);
+                this.scrollTimeout = null;
+            }
+        }
+
+
+        this.scrolledScroll = this.options.$scrolled.scrollTop();
+
+        var y = event.pageY - this.scrolledTop + this.scrolledScroll;
+
+        var targetContainer = this._findInnerContainer(y);
+        if (targetContainer === false) {
+            targetContainer = this.context.droppables[0];
+        }
+
+        if (typeof targetContainer.layers === "undefined") {
+            targetContainer.layers = this._cacheContainerLayers(targetContainer);
+        }
+
+        var targetIndex = this._findNormalIndex(y, targetContainer);
+
+        if (targetIndex > 0) {
+            this.context.placeholder.insertAfter(targetContainer.layers[targetIndex - 1].layer.layerRow);
+        } else {
+            this.context.placeholder.prependTo(targetContainer.$container);
+        }
+
+        this.context.targetIndex = targetIndex;
+        if (this.context.targetContainer && this.context.targetContainer != targetContainer) {
+            this.context.targetContainer.layer.layerRow.removeClass('n2-ss-ll-dragging-parent');
+        }
+
+        this.context.targetContainer = targetContainer;
+        this.context.targetContainer.layer.layerRow.addClass('n2-ss-ll-dragging-parent');
+
+        this.context.$clone.css({
+            top: y + this.context.mouse.topModifier
+        });
+
+    };
+
+    nUILayerList.prototype._mouseStop = function (itemOptions, event, noPropagation) {
+
+        if (this.scrollTimeout !== null) {
+            clearInterval(this.scrollTimeout);
+            this.scrollTimeout = null;
+        }
+
+        this.context.placeholder.remove();
+
+        this.context.$clone.remove();
+
+        this.context.targetContainer.layer.layerRow.removeClass('n2-ss-ll-dragging-parent');
+
+        var targetIndex = this.context.targetIndex,
+            targetContainer = this.context.targetContainer,
+            originalIndex = itemOptions.layer.getIndex(),
+            newIndex = -1;
+
+
+        if (this.context.targetContainer.layers.length === 0) {
+            newIndex = 0;
+        } else {
+            var nextLayer = false,
+                prevLayer = false;
+
+            if (this.context.targetContainer.layers[targetIndex]) {
+                nextLayer = this.context.targetContainer.layers[targetIndex].layer;
+            }
+
+            if (this.context.targetContainer.layers[targetIndex - 1]) {
+                prevLayer = this.context.targetContainer.layers[targetIndex - 1].layer;
+            }
+
+            if (nextLayer === itemOptions.layer || prevLayer === itemOptions.layer) {
+                newIndex = -1;
+            } else {
+                if (targetContainer.layer.container.allowedPlacementMode === 'absolute') {
+                    if (nextLayer) {
+                        //itemOptions.layer.layer.detach();
+                        newIndex = nextLayer.getIndex() + 1;
+                    } else if (prevLayer) {
+                        //itemOptions.layer.layer.detach();
+                        newIndex = prevLayer.getIndex();
+                    }
+                } else {
+                    if (prevLayer) {
+                        //itemOptions.layer.layer.detach();
+                        newIndex = prevLayer.getIndex() + 1;
+                    } else if (nextLayer) {
+                        //itemOptions.layer.layer.detach();
+                        newIndex = nextLayer.getIndex();
+                    }
+                }
+            }
+        }
+        if (newIndex >= 0) {
+            if (newIndex > originalIndex) {
+                newIndex--;
+            }
+            if (itemOptions.layer.type === 'col') {
+                targetContainer.layer.moveCol(originalIndex, newIndex);
+            } else {
+                targetContainer.layer.container.insertLayerAt(itemOptions.layer, newIndex);
+                itemOptions.layer.onCanvasUpdate(originalIndex, targetContainer.layer, newIndex);
+            }
+        }
+
+        delete this.context;
+
+        this._trigger("stop", event);
+
+
+        $('body').removeClass('n2-ss-layer-list-move-layer');
+    };
+
+    nUILayerList.prototype.cancel = function (itemOptions) {
+    };
+
+    nUILayerList.prototype._cacheContainers = function () {
+        for (var i = 0; i < this.context.droppables.length; i++) {
+            var obj = this.context.droppables[i];
+            obj.top = obj.$container.offset().top - this.scrolledTop + this.scrolledScroll - 15;
+            obj.height = obj.$container.outerHeight();
+            obj.bottom = obj.top + obj.height + 15;
+        }
+    };
+
+    nUILayerList.prototype._findInnerContainer = function (y) {
+        for (var i = this.context.droppables.length - 1; i >= 0; i--) {
+            var obj = this.context.droppables[i];
+            if (obj.top <= y && obj.bottom >= y) {
+                return obj;
+            }
+        }
+        return false;
+    };
+
+    nUILayerList.prototype._cacheContainerLayers = function (droppable) {
+        var layerObjects = [],
+            layers = droppable.layer.container.getSortedLayers();
+
+        for (var i = 0; i < layers.length; i++) {
+            //if (layers[i].layerRow[0] === this.context.$item[0]) continue;
+            var obj = {
+                layer: layers[i]
+            };
+            obj.top = obj.layer.layerRow.offset().top - this.scrolledTop + this.scrolledScroll;
+            obj.height = obj.layer.layerRow.outerHeight();
+            obj.bottom = obj.top + obj.height / 2;
+            obj.index = i;
+            layerObjects.push(obj);
+        }
+
+        if (droppable.layer.container.allowedPlacementMode == 'absolute') {
+            layerObjects.reverse();
+        }
+
+        return layerObjects;
+    };
+
+    nUILayerList.prototype._findNormalIndex = function (y, targetContainer) {
+        for (var i = 0; i < targetContainer.layers.length; i++) {
+            var obj = targetContainer.layers[i];
+            if (y <= obj.bottom) {
+                return i;
+            }
+        }
+        return targetContainer.layers.length;
+    };
+
+    N2Classes.nUIWidgetBase.register('nUILayerList');
+
+    return nUILayerList;
 });
 N2D('PlacementAbsolute', ['PlacementAbstract'], function ($, undefined) {
     "use strict";
@@ -9319,7 +10655,7 @@ N2D('PlacementAbsolute', ['PlacementAbstract'], function ($, undefined) {
         var value = this.layer.getProperty('align');
         this.$layer.attr('data-align', value);
 
-        if (from != 'history' && value != oldValue) {
+        if (from !== 'history' && value != oldValue) {
             this.setPositionLeft(this.$layer.position().left);
         }
     };
@@ -9327,7 +10663,7 @@ N2D('PlacementAbsolute', ['PlacementAbstract'], function ($, undefined) {
         var value = this.layer.getProperty('valign');
         this.$layer.attr('data-valign', value);
 
-        if (from != 'history' && value != oldValue) {
+        if (from !== 'history' && value != oldValue) {
             this.setPositionTop(this.$layer.position().top);
         }
     };
@@ -9484,16 +10820,29 @@ N2D('PlacementAbsolute', ['PlacementAbstract'], function ($, undefined) {
             this.$layer.removeAttr('data-parentid');
             this.unSubscribeParent();
         } else {
-            //setTimeout($.proxy(function () {
-            if ($('#' + value).length == 0) {
-                this.layer.setProperty('parentid', '', 'layer');
+            if (!N2Classes.History.get().actionInProgress()) {
+                this._linkToParentID(value, false);
             } else {
-                this.$layer.attr('data-parentid', value).addClass('n2-ss-layer-has-parent');
-                this.subscribeParent();
+                setTimeout($.proxy(this._linkToParentID, this, value, true), 100);
+            }
+        }
+    };
+
+    PlacementAbsolute.prototype._linkToParentID = function (value, historyAction) {
+        if ($('#' + value).length === 0) {
+            this.layer.setProperty('parentid', '', 'layer');
+        } else {
+            this.$layer.attr('data-parentid', value).addClass('n2-ss-layer-has-parent');
+            this.subscribeParent();
+
+            if (!historyAction) {
                 var position = this.$layer.position();
                 this._setPosition(null, null, position.left, position.top, null, null, true);
+            } else {
+                N2Classes.History.get().off();
+                this._setPosition(null, null, null, null, null, null, true);
+                N2Classes.History.get().on();
             }
-            //}, this), 50);
         }
     };
 
@@ -10109,14 +11458,14 @@ N2D('PlacementAbstract', ['Placement'], function ($, undefined) {
      * @memberOf N2Classes
      *
      * @param placement
-     * @param {ComponentAbstract} layer
+     * @param {N2Classes.ComponentAbstract} layer
      * @param fragmentEditor
      * @constructor
      */
     function PlacementAbstract(placement, layer, fragmentEditor) {
         this.placement = placement;
         /**
-         * @type {ComponentAbstract}
+         * @type {N2Classes.ComponentAbstract}
          */
         this.layer = layer;
         this.fragmentEditor = fragmentEditor;
@@ -10191,6 +11540,7 @@ N2D('Item', function ($, undefined) {
 
     /**
      * @memberOf N2Classes
+     * @augments N2Classes.Historical
      *
      * @constructor
      */
@@ -10203,7 +11553,7 @@ N2D('Item', function ($, undefined) {
 
         this.fragmentEditor = itemEditor.fragmentEditor;
         /**
-         * @type {Generator}
+         * @type {N2Classes.Generator}
          */
         this.generator = this.fragmentEditor.editor.generator;
 
@@ -10254,19 +11604,7 @@ N2D('Item', function ($, undefined) {
 
     Item.needSize = false;
 
-    Item.prototype.setSelf = function (self) {
-        if (this.self != this) {
-            this.self.setSelf(self);
-        }
-        this.self = self;
-    };
-
-    Item.prototype.getSelf = function () {
-        if (this.self != this) {
-            this.self = this.self.getSelf();
-        }
-        return this.self;
-    };
+    N2Classes.Historical(Item);
 
     Item.prototype.changeValue = function (property, value) {
         if (this == this.itemEditor.activeItem) {
@@ -10469,7 +11807,7 @@ N2D('ItemManager', function ($, undefined) {
     /**
      * @memberOf N2Classes
      *
-     * @param {FragmentEditor} fragmentEditor
+     * @param {N2Classes.FragmentEditor} fragmentEditor
      * @param options
      * @constructor
      */
@@ -10656,7 +11994,7 @@ N2D('ItemManager', function ($, undefined) {
     ItemManager.prototype.createLayerItem = function (group, data, interaction, props) {
         group = group || this.fragmentEditor.mainContainer.getActiveGroup();
         var type = data.item;
-        if (type == 'structure') {
+        if (type === 'structure') {
             var layer = new N2Classes.Row(this.fragmentEditor, group, {});
             layer.create(data.sstype);
             layer.hightlightStructure();
@@ -10665,10 +12003,20 @@ N2D('ItemManager', function ($, undefined) {
                 layer: layer
             };
         } else {
-
             var itemData = this.getItemForm(type),
-                $item = $('<div></div>').attr('data-item', type)
-                    .data('itemvalues', $.extend(true, {}, itemData.values, this.getLastValues(type)))
+                extraValues = {};
+            switch (type) {
+                case 'image':
+                    if (group.container.allowedPlacementMode === 'absolute') {
+                        extraValues.size = '100%|*|auto';
+                    } else {
+                        extraValues.size = 'auto|*|auto';
+                    }
+                    break;
+            }
+
+            var $item = $('<div></div>').attr('data-item', type)
+                    .data('itemvalues', $.extend(true, {}, itemData.values, this.getLastValues(type), extraValues))
                     .addClass('n2-ss-item n2-ss-item-' + type),
                 layer = this._createLayer($item, group, $.extend($('.n2-ss-core-item-' + type).data('layerproperties'), props));
 
@@ -11084,7 +12432,8 @@ N2D('Col', ['ContentAbstract'], function ($, undefined) {
         N2Classes.ContentAbstract.prototype.addProperties.call(this, $layer);
 
         this.createProperty('colwidth', '1', $layer);
-        this.createProperty('link', '#|*|_self', $layer);
+        this.createProperty('href', '', $layer);
+        this.createProperty('href-target', '_self', $layer);
 
         this.createAdvancedProperty(new N2Classes.LayerAdvancedProperty('borderradius', 0, {
             "-hover": undefined
@@ -11213,8 +12562,9 @@ N2D('Col', ['ContentAbstract'], function ($, undefined) {
         return this.widthPercentage;
     };
 
-    Col.prototype._synclink = function () {
-    };
+    Col.prototype._synchref =
+        Col.prototype['_synchref-target'] = function () {
+        };
 
     Col.prototype._syncborderradius =
         Col.prototype['_syncborderradius-hover'] = function () {
@@ -11355,7 +12705,7 @@ N2D('Col', ['ContentAbstract'], function ($, undefined) {
 
     return Col;
 });
-var dependencies = ['LayerDataStorage', 'PluginEditableName'];
+var dependencies = ['Historical', 'LayerDataStorage', 'PluginEditableName'];
 N2D('ComponentAbstract', dependencies, function ($, undefined) {
     "use strict";
 
@@ -11365,15 +12715,16 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
     /**
      * @memberOf N2Classes
      *
-     * @param {FragmentEditor} fragmentEditor
+     * @param {N2Classes.FragmentEditor} fragmentEditor
      * @param group
      * @param properties
      * @constructor
-     * @augments PluginActivatable
-     * @augments LayerDataStorage
-     * @augments PluginEditableName
-     * @augments PluginAnimatable
-     * @augments PluginShowOn
+     * @augments N2Classes.Historical
+     * @augments N2Classes.PluginActivatable
+     * @augments N2Classes.LayerDataStorage
+     * @augments N2Classes.PluginEditableName
+     * @augments N2Classes.PluginAnimatable
+     * @augments N2Classes.PluginShowOn
      */
     function ComponentAbstract(fragmentEditor, group, properties) {
 
@@ -11393,6 +12744,7 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
         this.$ = $(this);
 
         this.proxyRefreshBaseSize = $.proxy(this.refreshBaseSize, this);
+        this.proxyRefreshTextAlign = $.proxy(this.refreshTextAlign, this);
 
         this.status = ComponentAbstract.STATUS.UNDEFINED;
 
@@ -11406,7 +12758,7 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
 
         N2Classes.PluginActivatable.prototype.constructor.call(this);
 
-        /** @type {Placement} */
+        /** @type {N2Classes.Placement} */
         this.placement = new N2Classes.Placement(this);
 
         this.readyDeferred.done($.proxy(this.addUILabels, this));
@@ -11443,6 +12795,11 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
     for (var k in N2Classes.PluginShowOn.prototype) {
         ComponentAbstract.prototype[k] = N2Classes.PluginShowOn.prototype[k];
     }
+
+    N2Classes.Historical(ComponentAbstract);
+
+    ComponentAbstract.prototype.onSelfChange = function () {
+    };
 
     ComponentAbstract.prototype.addUILabels = function () {
         this.markTimer = null;
@@ -11546,6 +12903,7 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
         this.addProperties($layer);
 
         this.layer = $layer.data('layerObject', this);
+
         this.layer.triggerHandler('layerStarted', [this]);
 
         this.$.triggerHandler('load');
@@ -11621,6 +12979,7 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
 
     ComponentAbstract.prototype.setGroup = function (group) {
         this.group.$.off('baseSizeUpdated.sslayer' + this.counter);
+        this.group.$.off('textAlignUpdated.sslayer' + this.counter);
 
         this.group = group;
         this.placement.setMode(group.container.allowedPlacementMode);
@@ -11630,11 +12989,13 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
             this.refreshBaseSize();
         }
         this.group.$.on('baseSizeUpdated.sslayer' + this.counter, this.proxyRefreshBaseSize);
+        this.group.$.on('textAlignUpdated.sslayer' + this.counter, this.proxyRefreshTextAlign);
     };
 
     ComponentAbstract.prototype.changeGroup = function (originalIndex, newGroup) {
         var originalGroup = this.group;
         originalGroup.$.off('baseSizeUpdated.sslayer' + this.counter);
+        originalGroup.$.off('textAlignUpdated.sslayer' + this.counter);
 
         this.group = newGroup;
         var originalPlacementData = this.placement.setMode(newGroup.container.allowedPlacementMode);
@@ -11642,6 +13003,7 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
 
         this.refreshBaseSize();
         newGroup.$.on('baseSizeUpdated.sslayer' + this.counter, this.proxyRefreshBaseSize);
+        newGroup.$.on('textAlignUpdated.sslayer' + this.counter, this.proxyRefreshTextAlign);
 
         this.userGroupChange(originalGroup, originalIndex, originalPlacementData, newGroup, this.getIndex());
 
@@ -11674,6 +13036,7 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
         group.container.insertLayerAt(this, index);
 
         this.group.$.off('baseSizeUpdated.sslayer' + this.counter);
+        this.group.$.off('refreshTextAlign.sslayer' + this.counter);
 
         this.group = group;
         if (data.placementData) {
@@ -11684,6 +13047,7 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
 
         this.refreshBaseSize();
         this.group.$.on('baseSizeUpdated.sslayer' + this.counter, this.proxyRefreshBaseSize);
+        this.group.$.on('refreshTextAlign.sslayer' + this.counter, this.proxyRefreshBaseSize);
 
 
         group.onChildCountChange();
@@ -11757,7 +13121,6 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
 
     ComponentAbstract.prototype.update = function () {
         this.readyDeferred.done($.proxy(this.placement.updatePositionThrottled, this.placement));
-        //this.placement.updatePositionThrottled();
     };
 
     ComponentAbstract.prototype.updateThrottled = function () {
@@ -11812,9 +13175,9 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
             $layer.css(k, this.deviceProperty['desktop'][k] + 'px');
         }
 
-        if (this.container != undefined) {
+        if (this.container !== undefined) {
             var $innerContainer = $layer;
-            if (this.innerContainer != undefined) {
+            if (this.innerContainer !== undefined) {
                 $innerContainer = $layer.find(this.innerContainer);
             }
 
@@ -11836,7 +13199,7 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
     ComponentAbstract.prototype.duplicate = function (needActivate) {
         var $component = this.getHTML(false);
 
-        if (this.placement.getType() == 'absolute') {
+        if (this.placement.getType() === 'absolute') {
             var id = $component.attr('id');
             if (id) {
                 id = $.fn.uid();
@@ -11853,16 +13216,7 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
             $component.attr('data-parentid', '');
 
         }
-        /*
-         console.log($component.find('[data-uniqueclass]').addBack('[data-uniqueclass]'));
-         var uniqueclass = $component.attr('data-uniqueclass');
-         if (uniqueclass) {
-         $component.removeClass(uniqueclass);
-         uniqueclass = $.fn.generateUniqueClass('n-uc-');
-         $component.attr('data-uniqueclass', uniqueclass);
-         $component.addClass(uniqueclass);
-         }
-         */
+
         var newComponent = this.fragmentEditor.insertComponentWithNode(this.group, $component, this.getIndex() + 1, false, true);
 
         this.layerRow.trigger('mouseleave');
@@ -11963,6 +13317,7 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
 
 
         this.group.$.off('baseSizeUpdated.sslayer' + this.counter);
+        this.group.$.off('refreshTextAlign.sslayer' + this.counter);
         this.$.trigger('layerDeleted');
 
         if (this.markTimer) {
@@ -12212,6 +13567,11 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
         this.$.triggerHandler('baseSizeUpdated');
     };
 
+    ComponentAbstract.prototype.refreshTextAlign = function () {
+
+        this.$.triggerHandler('textAlignUpdated');
+    }
+
     ComponentAbstract.prototype.getFontSize = function () {
         return parseInt(this.getProperty('fontsize'));
     };
@@ -12351,24 +13711,6 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
 
     ComponentAbstract.prototype.toString = function () {
         return this.type + ' #' + this.counter;
-    };
-
-    ComponentAbstract.prototype.setSelf = function (self) {
-        if (self === undefined) {
-            console.error(self);
-        }
-        if (this.self != this) {
-            this.self.setSelf(self);
-        }
-        this.self = self;
-
-    };
-
-    ComponentAbstract.prototype.getSelf = function () {
-        if (this.self !== this) {
-            this.self = this.self.getSelf();
-        }
-        return this.self;
     };
 
     ComponentAbstract.prototype.historyStoreOnPlacement = function () {
@@ -12533,6 +13875,9 @@ N2D('ComponentAbstract', dependencies, function ($, undefined) {
         });
     };
 
+    ComponentAbstract.prototype.setState = function (name, value) {
+    };
+
     return ComponentAbstract;
 });
 N2D('Content', ['ContentAbstract'], function ($, undefined) {
@@ -12555,11 +13900,11 @@ N2D('Content', ['ContentAbstract'], function ($, undefined) {
 
         this.localStyle = [
             {
-                group: 'normal', selector: '', css: {
-                transition: 'transition:all .3s;transition-property:border,background-image,background-color,border-radius,box-shadow;'
-            }
+                group: 'normal', selector: '-inner', css: {
+                    transition: 'transition:all .3s;transition-property:border,background-image,background-color,border-radius,box-shadow;'
+                }
             },
-            {group: 'hover', selector: ':HOVER', css: {}}
+            {group: 'hover', selector: '-inner:HOVER', css: {}}
         ];
 
         N2Classes.ContentAbstract.prototype.constructor.call(this, fragmentEditor, group, properties);
@@ -12601,9 +13946,11 @@ N2D('Content', ['ContentAbstract'], function ($, undefined) {
 
     Content.prototype.createRow = function () {
 
-        this.addClassElement(this.layer);
-
         this.$content = this.layer.find('.n2-ss-layer-content:first');
+
+        this.addClassElement(this.layer);
+        this.addClassElement(this.$content, '-inner');
+
 
         var status = $('<div class="n2-ss-layer-status"></div>'),
             remove = $('<div class="n2-button n2-button-icon n2-button-m n2-button-m-narrow" data-n2tip="' + n2_('Delete layer') + '"><i class="n2-i n2-i-delete n2-i-grey-opacity"></i></div>').on('click', $.proxy(this.delete, this));
@@ -12753,7 +14100,6 @@ N2D('ContentAbstract', ['LayerContainer', 'ComponentAbstract'], function ($, und
         this.createProperty('bgimage', '', $layer);
         this.createProperty('bgimagex', 50, $layer);
         this.createProperty('bgimagey', 50, $layer);
-        this.createProperty('bgimageparallax', 0, $layer);
 
         this.createAdvancedProperty(new N2Classes.LayerAdvancedProperty('bgcolor', '00000000', {
             "-hover": undefined
@@ -12942,6 +14288,8 @@ N2D('ContentAbstract', ['LayerContainer', 'ComponentAbstract'], function ($, und
 
     ContentAbstract.prototype._syncinneralign = function () {
         this.layer.attr('data-csstextalign', this.getInnerAlign());
+
+        this.refreshTextAlign();
     };
 
     ContentAbstract.prototype.getVerticalAlign = function () {
@@ -12955,15 +14303,14 @@ N2D('ContentAbstract', ['LayerContainer', 'ComponentAbstract'], function ($, und
     ContentAbstract.prototype._syncbgimage =
         ContentAbstract.prototype._syncbgimagex =
             ContentAbstract.prototype._syncbgimagey =
-                ContentAbstract.prototype._syncbgimageparallax =
-                    ContentAbstract.prototype._syncbgcolor =
-                        ContentAbstract.prototype._syncbgcolorgradient =
-                            ContentAbstract.prototype._syncbgcolorgradientend =
-                                ContentAbstract.prototype['_syncbgcolor-hover'] =
-                                    ContentAbstract.prototype['_syncbgcolorgradient-hover'] =
-                                        ContentAbstract.prototype['_syncbgcolorgradientend-hover'] = function () {
-                                            this._syncbgThrottled();
-                                        };
+                ContentAbstract.prototype._syncbgcolor =
+                    ContentAbstract.prototype._syncbgcolorgradient =
+                        ContentAbstract.prototype._syncbgcolorgradientend =
+                            ContentAbstract.prototype['_syncbgcolor-hover'] =
+                                ContentAbstract.prototype['_syncbgcolorgradient-hover'] =
+                                    ContentAbstract.prototype['_syncbgcolorgradientend-hover'] = function () {
+                                        this._syncbgThrottled();
+                                    };
 
 
     ContentAbstract.prototype._syncbgThrottled = function () {
@@ -12979,8 +14326,8 @@ N2D('ContentAbstract', ['LayerContainer', 'ComponentAbstract'], function ($, und
             if (!isFinite(y)) {
                 y = 50;
             }
-            background += 'URL("' + nextend.imageHelper.fixed(image) + '") ' + x + '% ' + y + '% / cover no-repeat' + (this.getProperty('bgimageparallax') == 1 ? ' fixed' : '');
-            gradientBackgroundProps = ' ' + x + '% ' + y + '% / cover no-repeat' + (this.getProperty('bgimageparallax') == 1 ? ' fixed' : '')
+            background += 'URL("' + nextend.imageHelper.fixed(image) + '") ' + x + '% ' + y + '% / cover no-repeat';
+            gradientBackgroundProps = ' ' + x + '% ' + y + '% / cover no-repeat'
         }
         var color = this.getProperty('bgcolor'),
             gradient = this.getProperty('bgcolorgradient'),
@@ -13030,21 +14377,13 @@ N2D('ContentAbstract', ['LayerContainer', 'ComponentAbstract'], function ($, und
             }
             switch (gradient) {
                 case 'horizontal':
-                    return 'background:-moz-linear-gradient(left, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';'
-                        + 'background:-webkit-linear-gradient(left, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';'
-                        + 'background:linear-gradient(to right, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';';
+                    return 'background:linear-gradient(to right, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';';
                 case 'vertical':
-                    return 'background:-moz-linear-gradient(top, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';'
-                        + 'background:-webkit-linear-gradient(top, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';'
-                        + 'background:linear-gradient(to bottom, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';';
+                    return 'background:linear-gradient(to bottom, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';';
                 case 'diagonal1':
-                    return 'background:-moz-linear-gradient(45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';'
-                        + 'background:-webkit-linear-gradient(45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';'
-                        + 'background:linear-gradient(45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';';
+                    return 'background:linear-gradient(45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';';
                 case 'diagonal2':
-                    return 'background:-moz-linear-gradient(-45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';'
-                        + 'background:-webkit-linear-gradient(-45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';'
-                        + 'background:linear-gradient(135deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';';
+                    return 'background:linear-gradient(135deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';';
                 case 'off':
                 default:
                     if (backgroundImage != '') {
@@ -13249,7 +14588,9 @@ N2D('Layer', ['ComponentAbstract'], function ($, undefined) {
 
     /**
      *
-     * @param item {optional}
+     * @param e if provided, the layerWindow will show
+     * @param context
+     * @param preventExitFromSelection
      */
     Layer.prototype.activate = function (e, context, preventExitFromSelection) {
 
@@ -13297,19 +14638,10 @@ N2D('Layer', ['ComponentAbstract'], function ($, undefined) {
         return this.item.$item;
     };
 
-    Layer.prototype.setSelf = function (self) {
-        if (this.self != this) {
-            this.self.setSelf(self);
-        }
-        this.self = self;
-        this.item.setSelf(self.item);
-    };
+    Layer.prototype.onSelfChange = function () {
+        N2Classes.ComponentAbstract.prototype.onSelfChange.call(this);
 
-    Layer.prototype.getSelf = function () {
-        if (this.self !== this) {
-            this.self = this.self.getSelf();
-        }
-        return this.self;
+        this.item.setSelf(this.self.item);
     };
 
     return Layer;
@@ -13393,7 +14725,7 @@ N2D('MainContainer', ['LayerContainer'], function ($, undefined) {
     /**
      * @memberOf N2Classes
      *
-     * @param {FragmentEditor} fragmentEditor
+     * @param {N2Classes.FragmentEditor} fragmentEditor
      * @constructor
      */
     function MainContainer(fragmentEditor) {
@@ -13627,6 +14959,10 @@ N2D('MainContainer', ['LayerContainer'], function ($, undefined) {
         return this;
     };
 
+    /**
+     *
+     * @returns {N2Classes.FrontendLayerAnimationManager[]}
+     */
     MainContainer.prototype.createLayerAnimations = function () {
 
         var horizontalRatio = this.fragmentEditor.editor.getHorizontalRatio(),
@@ -13980,12 +15316,12 @@ N2D('Row', ['LayerContainer', 'ComponentAbstract'], function ($, undefined) {
         N2Classes.ComponentAbstract.prototype.addProperties.call(this, $layer);
 
 
-        this.createProperty('link', '#|*|_self', $layer);
+        this.createProperty('href', '', $layer);
+        this.createProperty('href-target', '_self', $layer);
 
         this.createProperty('bgimage', '', $layer);
         this.createProperty('bgimagex', 50, $layer);
         this.createProperty('bgimagey', 50, $layer);
-        this.createProperty('bgimageparallax', 0, $layer);
 
         this.createAdvancedProperty(new N2Classes.LayerAdvancedProperty('bgcolor', '00000000', {
             "-hover": undefined
@@ -14381,6 +15717,15 @@ N2D('Row', ['LayerContainer', 'ComponentAbstract'], function ($, undefined) {
         N2Classes.PluginActivatable.prototype.activate.apply(this, arguments);
 
         this.columnsField.setRow(this);
+
+        this.$row.nUIColumns('option', 'active', 1);
+    };
+
+    Row.prototype.deActivate = function () {
+
+        this.$row.nUIColumns('option', 'active', 0);
+
+        N2Classes.PluginActivatable.prototype.deActivate.apply(this, arguments);
     };
 
     Row.prototype.switchOpened = function (e) {
@@ -14471,7 +15816,7 @@ N2D('Row', ['LayerContainer', 'ComponentAbstract'], function ($, undefined) {
         }
 
         this.$rowInner.css({
-            width: 'calc(100% + ' + gutterValue + 'px)',
+            width: 'calc(100% + ' + (gutterValue + 1) + 'px)',
             margin: -sideGutterValue + 'px'
         });
 
@@ -14526,7 +15871,7 @@ N2D('Row', ['LayerContainer', 'ComponentAbstract'], function ($, undefined) {
                         sumWidth += flexLine[j].getWidthPercentage();
                     }
                     for (j = 0; j < flexLine.length; j++) {
-                        flexLine[j].layer.css('width', 'calc(' + (flexLine[j].getWidthPercentage() / sumWidth * 100) + '% - ' + gutterValue + 'px)');
+                        flexLine[j].layer.css('width', 'calc(' + (flexLine[j].getWidthPercentage() / sumWidth * 100) + '% - ' + (n2const.isIE || n2const.isEdge ? gutterValue + 1 : gutterValue) + 'px)');
                     }
                 }
             } else {
@@ -14561,6 +15906,8 @@ N2D('Row', ['LayerContainer', 'ComponentAbstract'], function ($, undefined) {
 
     Row.prototype._syncinneralign = function () {
         this.layer.attr('data-csstextalign', this.getInnerAlign());
+
+        this.refreshTextAlign();
     };
 
     Row.prototype._syncfullwidth = function () {
@@ -14604,21 +15951,21 @@ N2D('Row', ['LayerContainer', 'ComponentAbstract'], function ($, undefined) {
         return '';
     };
 
-    Row.prototype._synclink = function () {
-    };
+    Row.prototype._synchref =
+        Row.prototype['_synchref-target'] = function () {
+        };
 
     Row.prototype._syncbgimage =
         Row.prototype._syncbgimagex =
             Row.prototype._syncbgimagey =
-                Row.prototype._syncbgimageparallax =
-                    Row.prototype._syncbgcolor =
-                        Row.prototype._syncbgcolorgradient =
-                            Row.prototype._syncbgcolorgradientend =
-                                Row.prototype['_syncbgcolor-hover'] =
-                                    Row.prototype['_syncbgcolorgradient-hover'] =
-                                        Row.prototype['_syncbgcolorgradientend-hover'] = function () {
-                                            this._syncbgThrottled();
-                                        };
+                Row.prototype._syncbgcolor =
+                    Row.prototype._syncbgcolorgradient =
+                        Row.prototype._syncbgcolorgradientend =
+                            Row.prototype['_syncbgcolor-hover'] =
+                                Row.prototype['_syncbgcolorgradient-hover'] =
+                                    Row.prototype['_syncbgcolorgradientend-hover'] = function () {
+                                        this._syncbgThrottled();
+                                    };
 
 
     Row.prototype._syncbgThrottled = function () {
@@ -14634,8 +15981,8 @@ N2D('Row', ['LayerContainer', 'ComponentAbstract'], function ($, undefined) {
             if (!isFinite(y)) {
                 y = 50;
             }
-            background += 'URL("' + nextend.imageHelper.fixed(image) + '") ' + x + '% ' + y + '% / cover no-repeat' + (this.getProperty('bgimageparallax') == 1 ? ' fixed' : '');
-            gradientBackgroundProps = ' ' + x + '% ' + y + '% / cover no-repeat' + (this.getProperty('bgimageparallax') == 1 ? ' fixed' : '');
+            background += 'URL("' + nextend.imageHelper.fixed(image) + '") ' + x + '% ' + y + '% / cover no-repeat';
+            gradientBackgroundProps = ' ' + x + '% ' + y + '% / cover no-repeat';
         }
         var color = this.getProperty('bgcolor'),
             gradient = this.getProperty('bgcolorgradient'),
@@ -14685,21 +16032,13 @@ N2D('Row', ['LayerContainer', 'ComponentAbstract'], function ($, undefined) {
             }
             switch (gradient) {
                 case 'horizontal':
-                    return 'background:-moz-linear-gradient(left, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';'
-                        + 'background:-webkit-linear-gradient(left, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';'
-                        + 'background:linear-gradient(to right, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';';
+                    return 'background:linear-gradient(to right, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';';
                 case 'vertical':
-                    return 'background:-moz-linear-gradient(top, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';'
-                        + 'background:-webkit-linear-gradient(top, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';'
-                        + 'background:linear-gradient(to bottom, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';';
+                    return 'background:linear-gradient(to bottom, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';';
                 case 'diagonal1':
-                    return 'background:-moz-linear-gradient(45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';'
-                        + 'background:-webkit-linear-gradient(45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';'
-                        + 'background:linear-gradient(45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';';
+                    return 'background:linear-gradient(45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';';
                 case 'diagonal2':
-                    return 'background:-moz-linear-gradient(-45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';'
-                        + 'background:-webkit-linear-gradient(-45deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';'
-                        + 'background:linear-gradient(135deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';';
+                    return 'background:linear-gradient(135deg, ' + N2Color.hex2rgbaCSS(color) + ' 0%,' + N2Color.hex2rgbaCSS(colorend) + ' 100%)' + after + ';';
                 case 'off':
                 default:
                     if (backgroundImage != '') {
@@ -14826,7 +16165,7 @@ N2D('Row', ['LayerContainer', 'ComponentAbstract'], function ($, undefined) {
                     sumWidth += flexLine[j]._tempWidth;
                 }
                 for (j = 0; j < flexLine.length; j++) {
-                    flexLine[j].layer.css('width', 'calc(' + (flexLine[j]._tempWidth / sumWidth * 100) + '% - ' + gutterValue + 'px)');
+                    flexLine[j].layer.css('width', 'calc(' + (flexLine[j]._tempWidth / sumWidth * 100) + '% - ' + (n2const.isIE || n2const.isEdge ? gutterValue + 1 : gutterValue) + 'px)');
                 }
             }
         } else {
@@ -14957,7 +16296,7 @@ N2D('ComponentSettings', function ($, undefined) {
     /**
      * @memberOf N2Classes
      *
-     * @param {FragmentEditor} fragmentEditor
+     * @param {N2Classes.FragmentEditor} fragmentEditor
      * @constructor
      */
     function ComponentSettings(fragmentEditor) {
@@ -15062,7 +16401,6 @@ N2D('ComponentSettings', function ($, undefined) {
             bgimage: $('#layercontent-background-image'),
             bgimagex: $('#layercontent-background-focus-x'),
             bgimagey: $('#layercontent-background-focus-y'),
-            bgimageparallax: $('#layercontent-background-parallax'),
             bgcolorgradient: $('#layercontent-background-gradient'),
             bgcolorgradientend: $('#layercontent-background-color-end'),
             opened: $('#layercontent-opened')
@@ -15076,11 +16414,11 @@ N2D('ComponentSettings', function ($, undefined) {
             stretch: $('#layerrow-stretch'),
             wrapafter: $('#layerrow-wrap-after'),
             inneralign: $('#layerrow-inneralign'),
-            link: $('#layerrow-link'),
+            href: $('#layerrow-href'),
+            'href-target': $('#layerrow-href-target'),
             bgimage: $('#layerrow-background-image'),
             bgimagex: $('#layerrow-background-focus-x'),
             bgimagey: $('#layerrow-background-focus-y'),
-            bgimageparallax: $('#layerrow-background-parallax'),
             stylemode: $('#layerrow-style-mode').on('n2resetmode', $.proxy(this.resetStyleMode, this, 'stylemode')),
             bgcolor: $('#layerrow-background-color'),
             bgcolorgradient: $('#layerrow-background-gradient'),
@@ -15089,6 +16427,7 @@ N2D('ComponentSettings', function ($, undefined) {
             boxshadow: $('#layerrow-boxshadow'),
             opened: $('#layerrow-opened')
         };
+        fragmentEditor.editor.generator.registerField(this.forms.component.row.href);
         fragmentEditor.editor.generator.registerField(this.forms.component.row.bgimage);
 
         this.forms.component.col = {
@@ -15096,11 +16435,11 @@ N2D('ComponentSettings', function ($, undefined) {
             padding: $('#layercol-padding'),
             inneralign: $('#layercol-inneralign'),
             verticalalign: $('#layercol-verticalalign'),
-            link: $('#layercol-link'),
+            href: $('#layercol-href'),
+            'href-target': $('#layercol-href-target'),
             bgimage: $('#layercol-background-image'),
             bgimagex: $('#layercol-background-focus-x'),
             bgimagey: $('#layercol-background-focus-y'),
-            bgimageparallax: $('#layercol-background-parallax'),
             stylemode: $('#layercol-style-mode').on('n2resetmode', $.proxy(this.resetStyleMode, this, 'stylemode')),
             bgcolor: $('#layercol-background-color'),
             bgcolorgradient: $('#layercol-background-gradient'),
@@ -15114,7 +16453,7 @@ N2D('ComponentSettings', function ($, undefined) {
             colwidth: $('#layercol-colwidth'),
             order: $('#layercol-order')
         };
-        fragmentEditor.editor.generator.registerField($('#col-linklayerlink-1'));
+        fragmentEditor.editor.generator.registerField(this.forms.component.col.href);
         fragmentEditor.editor.generator.registerField(this.forms.component.col.bgimage);
     }
 
@@ -15461,1272 +16800,6 @@ N2D('BgAnimationManager', ['NextendVisualManagerMultipleSelection'], function ($
     return BgAnimationManager;
 });
 
-N2D('nUICanvasItem', ['nUIMouse'], function ($, undefined) {
-    "use strict";
-
-    /**
-     * @memberOf N2Classes
-     *
-     * @class
-     * @constructor
-     * @augments nUIMouse
-
-     * @this nUICanvasItem
-     */
-    function nUICanvasItem(element, options) {
-        this.element = $(element);
-
-        this.widgetName = this.widgetName || 'nUICanvasItem';
-        this.widgetEventPrefix = "canvasItem";
-
-        this.options = $.extend({
-            canvasUIManager: null,
-            layer: false,
-            $layer: null,
-            distance: 2,
-            onCreate: function () {
-
-            }
-        }, this.options, options);
-
-        N2Classes.nUIMouse.prototype.constructor.apply(this, arguments);
-
-        this.create();
-    }
-
-    nUICanvasItem.prototype = Object.create(N2Classes.nUIMouse.prototype);
-    nUICanvasItem.prototype.constructor = nUICanvasItem;
-
-    nUICanvasItem.prototype.create = function () {
-
-        if (typeof this.options.$layer === 'function') {
-            this.options.$layer = this.options.$layer.call(this, this);
-        }
-
-        this._mouseInit();
-    };
-    nUICanvasItem.prototype._mouseCapture = function (event, overrideHandle) {
-        return this.options.canvasUIManager._mouseCapture(this.options, event, overrideHandle);
-    };
-
-    nUICanvasItem.prototype._mouseStart = function (event, overrideHandle, noActivation) {
-        this._trigger('start');
-        return this.options.canvasUIManager._mouseStart(this.options, event, overrideHandle, noActivation);
-    };
-
-    nUICanvasItem.prototype._mouseDrag = function (event) {
-        return this.options.canvasUIManager._mouseDrag(this.options, event);
-    };
-
-    nUICanvasItem.prototype._mouseStop = function (event, noPropagation) {
-        return this.options.canvasUIManager._mouseStop(this.options, event, noPropagation);
-
-    };
-
-    nUICanvasItem.prototype._destroy = function () {
-        this._mouseDestroy();
-
-        return this;
-    };
-
-    N2Classes.nUIWidgetBase.register('nUICanvasItem');
-
-    return nUICanvasItem;
-});
-N2D('nUICanvas', ['nUIWidgetBase'], function ($, undefined) {
-    "use strict";
-
-    /**
-     * @memberOf N2Classes
-     *
-     * @class
-     * @constructor
-     * @augments nUIWidgetBase
-
-     * @this nUICanvas
-     */
-    function nUICanvas(element, options) {
-        this.element = $(element);
-
-        this.widgetName = this.widgetName || 'nUICanvas';
-        this.widgetEventPrefix = "canvas";
-
-        this.options = $.extend({
-            mainContainer: null,
-            display: false,
-        }, this.options, options);
-
-        N2Classes.nUIWidgetBase.prototype.constructor.apply(this, arguments);
-    }
-
-    nUICanvas.prototype = Object.create(N2Classes.nUIWidgetBase.prototype);
-    nUICanvas.prototype.constructor = nUICanvas;
-
-    nUICanvas.plugins = {};
-
-    nUICanvas.prototype._mouseCapture = function (itemOptions, event, overrideHandle) {
-        return $(event.target).closest(".nui-resizable-handle, .nui-normal-sizing-handle, .nui-spacing-handle").length == 0;
-    };
-
-    nUICanvas.prototype._mouseStart = function (itemOptions, event, overrideHandle, noActivation) {
-
-        $('body').addClass('n2-ss-move-layer');
-
-        this.dragDeferred = $.Deferred();
-        this.options.mainContainer.fragmentEditor.layerWindow.hideWithDeferred(this.dragDeferred);
-
-        this.context = {
-            placeholder: $('<div class="n2-ss-layer-placeholder" />'),
-            mouse: {
-                offset: {
-                    left: event.pageX,
-                    top: event.pageY
-                }
-            },
-            canvas: {
-                offset: this.options.mainContainer.layer.offset(),
-                size: {
-                    width: this.options.mainContainer.layer.outerWidth(),
-                    height: this.options.mainContainer.layer.outerHeight()
-                }
-            },
-            $layer: itemOptions.$layer
-        };
-
-        var css = {
-            position: 'absolute',
-            right: 'auto',
-            bottom: 'auto'
-        };
-
-        if (!itemOptions.layer) {
-            this.startMode = 'create';
-
-            this.context.layer = {
-                offset: {
-                    left: 0,
-                    top: 0
-                }
-            };
-
-            itemOptions.$layer.appendTo('body');
-        } else {
-            this.startMode = itemOptions.layer.placement.getType();
-
-            this.context.layer = {
-                offset: itemOptions.$layer.offset()
-            };
-
-            this.context.originalIndex = itemOptions.layer.getIndex();
-
-            if (this.startMode == 'normal') {
-
-                css.width = itemOptions.$layer.width();
-                //css.height = itemOptions.$layer.height();
-
-                itemOptions.$layer.appendTo(this.options.mainContainer.layer);
-            }
-        }
-
-        itemOptions.$layer
-            .addClass('n2-canvas-item-drag')
-            .css(css);
-
-        this._cacheMargins(itemOptions.$layer);
-
-        this.context.size = {
-            width: itemOptions.$layer.outerWidth(),
-            height: itemOptions.$layer.outerHeight()
-        };
-
-
-        this.context.droppables = this.options.mainContainer.getDroppables(itemOptions.layer);
-
-        this._cacheContainers();
-
-        this._trigger("start", event, {
-            layer: itemOptions.layer,
-            mode: this.startMode
-        });
-
-        this._mouseDrag(itemOptions, event);
-    };
-
-    nUICanvas.prototype._mouseDrag = function (itemOptions, event) {
-        var position;
-        if (this.startMode == 'create') {
-            position = {
-                top: event.pageY - this.context.canvas.offset.top - 20,
-                left: event.pageX - this.context.canvas.offset.left - 20
-            };
-        } else {
-            position = {
-                top: this.context.layer.offset.top - this.context.canvas.offset.top + event.pageY - this.context.mouse.offset.top,
-                left: this.context.layer.offset.left - this.context.canvas.offset.left + event.pageX - this.context.mouse.offset.left
-            };
-        }
-
-        var targetContainer = this._findInnerContainer(event);
-        if (targetContainer === false && this.startMode != 'create') {
-            targetContainer = this.context.droppables[0];
-        }
-        if (targetContainer) {
-            if (targetContainer.placement == 'normal') {
-
-                if (typeof targetContainer.layers === "undefined") {
-                    targetContainer.layers = this._cacheContainerLayers(targetContainer);
-                }
-
-                var targetIndex = this._findNormalIndex(event, targetContainer);
-                if (targetIndex > 0) {
-                    this.context.placeholder.css('order', targetContainer.layers[targetIndex - 1].layer.layer.css('order'));
-                    this.context.placeholder.insertAfter(targetContainer.layers[targetIndex - 1].layer.layer);
-                } else {
-                    this.context.placeholder.css('order', 0);
-                    this.context.placeholder.prependTo(targetContainer.$container);
-                }
-
-                this.context.targetIndex = targetIndex;
-            } else {
-                this.context.placeholder.detach();
-            }
-        } else {
-            this.context.placeholder.detach();
-        }
-
-        this.context.targetContainer = targetContainer;
-
-
-        this._trigger("drag", event, {
-            layer: itemOptions.layer,
-            originalOffset: this.context.layer.offset,
-            position: position,
-            canvasOffset: this.context.canvas.offset,
-            offset: {
-                left: position.left + this.context.canvas.offset.left,
-                top: position.top + this.context.canvas.offset.top
-            }
-        });
-
-        if (this.startMode == 'create') {
-            position.left += this.context.canvas.offset.left;
-            position.top += this.context.canvas.offset.top;
-        }
-
-        itemOptions.$layer.css(position);
-
-        this._displayPosition(event, position);
-    };
-
-    nUICanvas.prototype._mouseStop = function (itemOptions, event, noPropagation) {
-        this.context.placeholder.remove();
-
-        var targetIndex = this.context.targetIndex,
-            targetContainer = this.context.targetContainer;
-
-        itemOptions.$layer
-            .removeClass('n2-canvas-item-drag');
-
-        if (this.startMode == 'create') {
-            if (targetContainer) {
-                itemOptions.onCreate.call(this, event, itemOptions, targetContainer, targetIndex);
-            }
-            itemOptions.$layer.detach();
-
-        } else {
-            if (targetContainer === undefined) {
-                targetContainer = this.options.mainContainer.layer;
-            }
-
-            if (this.startMode == 'absolute' && targetContainer.placement == 'absolute') {
-
-                // Simple drag on the canvas on an absolute layer. Just update its position!
-                var left = parseInt(itemOptions.$layer.css('left')),
-                    top = parseInt(itemOptions.$layer.css('top'));
-
-                itemOptions.$layer.css({
-                    position: '',
-                    right: '',
-                    bottom: '',
-                });
-
-                itemOptions.layer.placement.current.setPosition(left, top);
-
-            } else if (targetContainer.placement == 'absolute') {
-
-                // Layer moved from a normal container to the canvas.
-
-                var left = parseInt(itemOptions.$layer.css('left')),
-                    top = parseInt(itemOptions.$layer.css('top'));
-
-                itemOptions.$layer.css({
-                    position: '',
-                    right: '',
-                    bottom: '',
-                });
-
-                var width = itemOptions.$layer.width(),
-                    height = itemOptions.$layer.height();
-
-                itemOptions.layer.group.onChildCountChange();
-
-                var oldAbsoluteGroup = itemOptions.layer;
-                while (oldAbsoluteGroup && (!oldAbsoluteGroup.placement || oldAbsoluteGroup.placement.getType() !== 'absolute')) {
-                    oldAbsoluteGroup = oldAbsoluteGroup.group;
-                }
-
-                N2Classes.History.get().startBatch();
-                // Set the new group, which will trigger this current placement to activate
-                itemOptions.layer.changeGroup(this.context.originalIndex, this.options.mainContainer);
-                N2Classes.History.get().addControl('skipForwardUndos');
-
-                if (itemOptions.layer.type == 'layer' && itemOptions.layer.item) {
-                    if (!itemOptions.layer.item.needSize) {
-                        height = 'auto';
-                        width++; //Prevent text layers to wrap line ending to new line after drag
-                    }
-                }
-
-                // As this placement activated, we have to set these values from the closest absolute parent
-                var targetAlign = oldAbsoluteGroup ? oldAbsoluteGroup.getProperty('align') : 'center',
-                    targetValign = oldAbsoluteGroup ? oldAbsoluteGroup.getProperty('valign') : 'middle';
-
-                itemOptions.layer.placement.current._setPosition(targetAlign, targetValign, left, top, width, height, true);
-
-                N2Classes.History.get().endBatch();
-
-            } else if (targetContainer.placement == 'normal') {
-                itemOptions.$layer.css({
-                    position: 'relative',
-                    width: '',
-                    left: '',
-                    top: ''
-                });
-
-                switch (targetContainer.layer.type) {
-
-                    case 'content':
-                    case 'col':
-                        if (targetIndex > 0) {
-                            itemOptions.$layer.insertAfter(targetContainer.layers[targetIndex - 1].layer.layer);
-                        } else {
-                            itemOptions.$layer.prependTo(targetContainer.$container);
-                        }
-
-                        itemOptions.layer.onCanvasUpdate(this.context.originalIndex, targetContainer.layer, targetIndex);
-                        break;
-
-                    case 'row':
-                        var col = targetContainer.layer.createCol();
-                        targetContainer.layer.moveCol(col.getIndex(), targetIndex);
-
-                        itemOptions.$layer.prependTo(col.$content);
-                        itemOptions.layer.onCanvasUpdate(this.context.originalIndex, col, 0);
-
-                        break;
-                }
-
-                //itemOptions.layer.placement.current._syncheight(); // we should sync back the height of the normal layer
-            }
-        }
-
-        delete this.context;
-
-        if (this.options.display) {
-            this.options.display.hide();
-        }
-
-        this._trigger("stop", event, {
-            layer: itemOptions.layer
-        });
-
-        this.dragDeferred.resolve();
-
-
-        $('body').removeClass('n2-ss-move-layer');
-    };
-
-    nUICanvas.prototype.cancel = function (itemOptions) {
-    };
-
-    nUICanvas.prototype._cacheContainers = function () {
-        for (var i = 0; i < this.context.droppables.length; i++) {
-            var obj = this.context.droppables[i];
-            obj.offset = obj.$container.offset();
-            obj.size = {
-                width: obj.$container.outerWidth(),
-                height: obj.$container.outerHeight()
-            };
-            obj.offset.right = obj.offset.left + obj.size.width;
-            obj.offset.bottom = obj.offset.top + obj.size.height;
-        }
-    };
-
-    nUICanvas.prototype._findInnerContainer = function (event) {
-        for (var i = this.context.droppables.length - 1; i >= 0; i--) {
-            var obj = this.context.droppables[i];
-            if (obj.offset.left <= event.pageX && obj.offset.right >= event.pageX && obj.offset.top <= event.pageY && obj.offset.bottom >= event.pageY) {
-                return obj;
-            }
-        }
-        return false;
-    };
-
-    nUICanvas.prototype._cacheContainerLayers = function (droppable) {
-        var layerObjects = [],
-            layers = droppable.layer.container.getSortedLayers();
-
-        for (var i = 0; i < layers.length; i++) {
-            var obj = {
-                layer: layers[i]
-            };
-            obj.offset = obj.layer.layer.offset();
-            obj.size = {
-                width: obj.layer.layer.outerWidth(),
-                height: obj.layer.layer.outerHeight()
-            };
-            obj.offset.right = obj.offset.left + obj.size.width / 2;
-            obj.offset.bottom = obj.offset.top + obj.size.height / 2;
-            layerObjects.push(obj);
-        }
-
-        return layerObjects;
-    };
-
-    nUICanvas.prototype._findNormalIndex = function (event, targetContainer) {
-        var index = -1;
-
-        switch (targetContainer.axis) {
-            case 'y':
-                for (var i = 0; i < targetContainer.layers.length; i++) {
-                    var obj = targetContainer.layers[i];
-                    if (event.pageY <= obj.offset.bottom) {
-                        index = i;
-                        break;
-                    }
-                }
-                break;
-            case 'x':
-                for (var i = 0; i < targetContainer.layers.length; i++) {
-                    var obj = targetContainer.layers[i];
-                    if (event.pageX <= obj.offset.right) {
-                        index = i;
-                        break;
-                    }
-                }
-                break;
-        }
-
-        if (index === -1) {
-            index = targetContainer.layers.length;
-        }
-
-        return index;
-    };
-
-    nUICanvas.prototype._displayPosition = function (event, position) {
-
-        if (this.options.display) {
-            if (this.context.targetContainer && this.context.targetContainer.placement == 'absolute') {
-                if (this.options.display.hidden) {
-                    this.options.display.show();
-                }
-                if (this.startMode == 'create') {
-                    position.left -= this.context.canvas.offset.left;
-                    position.top -= this.context.canvas.offset.top;
-                }
-                this.options.display.update(event, position);
-            } else {
-                if (this.options.display.hidden) {
-                    this.options.display.hide();
-                }
-            }
-        }
-    };
-
-    nUICanvas.prototype._trigger = function (type, event, ui) {
-        ui = ui || {};
-
-        this.callPlugin(type, [event, ui]);
-
-
-        return N2Classes.nUIWidgetBase.prototype._trigger.apply(this, arguments);
-    };
-
-    nUICanvas.prototype._cacheMargins = function (layer) {
-        this.margins = {
-            left: ( parseInt(layer.css("marginLeft"), 10) || 0 ),
-            top: ( parseInt(layer.css("marginTop"), 10) || 0 ),
-            right: ( parseInt(layer.css("marginRight"), 10) || 0 ),
-            bottom: ( parseInt(layer.css("marginBottom"), 10) || 0 )
-        };
-    };
-
-    N2Classes.nUIWidgetBase.register('nUICanvas');
-
-
-    N2Classes.nUIWidgetBase.addPlugin(nUICanvas, "smartguides", {
-        start: function (event, ui) {
-            var inst = $(this).data("nUICanvas"), o = inst.options;
-
-            if (inst.startMode == 'create') return;
-
-            inst.gridH = $('<div class="n2-grid n2-grid-h"></div>').appendTo(o.mainContainer.layer);
-            inst.gridV = $('<div class="n2-grid n2-grid-v"></div>').appendTo(o.mainContainer.layer);
-            inst.elements = [];
-            if (typeof o.smartguides == 'function') {
-                var guides = $(o.smartguides(inst.context)).not(inst.context.$layer);
-                if (guides && guides.length) {
-                    guides.each(function () {
-                        var $t = $(this);
-                        var $o = $t.offset();
-                        if (this != inst.element[0]) inst.elements.push({
-                            item: this,
-                            width: $t.outerWidth(), height: $t.outerHeight(),
-                            top: Math.round($o.top), left: Math.round($o.left),
-                            backgroundColor: ''
-                        });
-                    });
-                }
-                var $o = o.mainContainer.layer.offset();
-                inst.elements.push({
-                    width: o.mainContainer.layer.width(), height: o.mainContainer.layer.height(),
-                    top: Math.round($o.top), left: Math.round($o.left),
-                    backgroundColor: '#ff4aff'
-                });
-            }
-        },
-
-        stop: function (event, ui) {
-            var inst = $(this).data("nUICanvas");
-
-            if (inst.startMode == 'create') return;
-
-            inst.gridH.remove();
-            inst.gridV.remove();
-        },
-
-        drag: function (event, ui) {
-            var vElement = false,
-                hElement = false,
-                inst = $(this).data("nUICanvas"),
-                o = inst.options,
-                verticalTolerance = o.tolerance,
-                horizontalTolerance = o.tolerance;
-
-            if (inst.startMode == 'create') return;
-
-            inst.gridH.css({"display": "none"});
-            inst.gridV.css({"display": "none"});
-
-            if (inst.context.targetContainer && inst.context.targetContainer.placement == 'absolute') {
-
-                var container = inst.elements[inst.elements.length - 1],
-                    setGridV = function (left) {
-                        inst.gridV.css({left: Math.min(left, container.width - 1), display: "block"});
-                    },
-                    setGridH = function (top) {
-                        inst.gridH.css({top: Math.min(top, container.height - 1), display: "block"});
-                    };
-
-                var ctrlKey = event.ctrlKey || event.metaKey,
-                    altKey = event.altKey;
-                if (ctrlKey && altKey) {
-                    return;
-                } else if (ctrlKey) {
-                    vElement = true;
-                } else if (altKey) {
-                    hElement = true;
-                }
-                var x1 = ui.offset.left, x2 = x1 + inst.context.size.width,
-                    y1 = ui.offset.top, y2 = y1 + inst.context.size.height,
-                    xc = (x1 + x2) / 2,
-                    yc = (y1 + y2) / 2;
-
-                if (!vElement) {
-                    for (var i = inst.elements.length - 1; i >= 0; i--) {
-                        if (verticalTolerance == 0) break;
-
-                        var l = inst.elements[i].left,
-                            r = l + inst.elements[i].width,
-                            hc = (l + r) / 2;
-
-                        var v = true,
-                            c;
-                        if ((c = Math.abs(l - x2)) < verticalTolerance) {
-                            ui.position.left = l - inst.context.size.width - inst.context.canvas.offset.left - inst.margins.left;
-                            setGridV(ui.position.left + inst.context.size.width);
-                        } else if ((c = Math.abs(l - x1)) < verticalTolerance) {
-                            ui.position.left = l - inst.context.canvas.offset.left - inst.margins.left;
-                            setGridV(ui.position.left);
-                        } else if ((c = Math.abs(r - x1)) < verticalTolerance) {
-                            ui.position.left = r - inst.context.canvas.offset.left - inst.margins.left;
-                            setGridV(ui.position.left);
-                        } else if ((c = Math.abs(r - x2)) < verticalTolerance) {
-                            ui.position.left = r - inst.context.size.width - inst.context.canvas.offset.left - inst.margins.left;
-                            setGridV(ui.position.left + inst.context.size.width);
-                        } else if ((c = Math.abs(hc - x2)) < verticalTolerance) {
-                            ui.position.left = hc - inst.context.size.width - inst.context.canvas.offset.left - inst.margins.left;
-                            setGridV(ui.position.left + inst.context.size.width);
-                        } else if ((c = Math.abs(hc - x1)) < verticalTolerance) {
-                            ui.position.left = hc - inst.context.canvas.offset.left - inst.margins.left;
-                            setGridV(ui.position.left);
-                        } else if ((c = Math.abs(hc - xc)) < verticalTolerance) {
-                            ui.position.left = hc - inst.context.size.width / 2 - inst.context.canvas.offset.left - inst.margins.left;
-                            setGridV(ui.position.left + inst.context.size.width / 2);
-                        } else {
-                            v = false;
-                        }
-
-                        if (v) {
-                            vElement = inst.elements[i];
-                            verticalTolerance = Math.min(c, verticalTolerance);
-                        }
-                    }
-                }
-
-                if (!hElement) {
-                    for (var i = inst.elements.length - 1; i >= 0; i--) {
-                        if (horizontalTolerance == 0) break;
-
-                        var t = inst.elements[i].top,
-                            b = t + inst.elements[i].height,
-                            vc = (t + b) / 2;
-
-                        var h = true,
-                            c;
-                        if ((c = Math.abs(t - y2)) < horizontalTolerance) {
-                            ui.position.top = t - inst.context.size.height - inst.context.canvas.offset.top - inst.margins.top;
-                            setGridH(ui.position.top + inst.context.size.height);
-                        } else if ((c = Math.abs(t - y1)) < horizontalTolerance) {
-                            ui.position.top = t - inst.context.canvas.offset.top - inst.margins.top;
-                            setGridH(ui.position.top);
-                        } else if ((c = Math.abs(b - y1)) < horizontalTolerance) {
-                            ui.position.top = b - inst.context.canvas.offset.top - inst.margins.top;
-                            setGridH(ui.position.top);
-                        } else if ((c = Math.abs(b - y2)) < horizontalTolerance) {
-                            ui.position.top = b - inst.context.size.height - inst.context.canvas.offset.top - inst.margins.top;
-                            setGridH(ui.position.top + inst.context.size.height);
-                        } else if ((c = Math.abs(vc - y2)) < horizontalTolerance) {
-                            ui.position.top = vc - inst.context.size.height - inst.context.canvas.offset.top - inst.margins.top;
-                            setGridH(ui.position.top + inst.context.size.height);
-                        } else if ((c = Math.abs(vc - y1)) < horizontalTolerance) {
-                            ui.position.top = vc - inst.context.canvas.offset.top - inst.margins.top;
-                            setGridH(ui.position.top);
-                        } else if ((c = Math.abs(vc - yc)) < horizontalTolerance) {
-                            ui.position.top = vc - inst.context.size.height / 2 - inst.context.canvas.offset.top - inst.margins.top;
-                            setGridH(ui.position.top + inst.context.size.height / 2);
-                        } else {
-                            h = false;
-                        }
-
-                        if (h) {
-                            hElement = inst.elements[i];
-                            horizontalTolerance = Math.min(c, horizontalTolerance);
-                        }
-                    }
-                }
-
-                if (vElement && vElement !== true) {
-                    inst.gridV.css('backgroundColor', vElement.backgroundColor);
-                }
-                if (hElement && hElement !== true) {
-                    inst.gridH.css('backgroundColor', hElement.backgroundColor);
-                }
-            }
-        }
-    });
-
-    return nUICanvas;
-});
-N2D('nUIColumns', ['nUIMouse'], function ($, undefined) {
-    "use strict";
-
-    /**
-     * @memberOf N2Classes
-     *
-     * @class
-     * @constructor
-     * @augments nUIMouse
-
-     * @this nUIColumns
-     */
-    function nUIColumns(element, options) {
-        this.element = $(element);
-
-        this.widgetName = this.widgetName || 'nUIColumns';
-        this.widgetEventPrefix = "columns";
-
-        this.options = $.extend({
-            columns: '1',
-            gutter: 0,
-            denominators: {
-                1: 100,
-                2: 100,
-                3: 144,
-                4: 100,
-                5: 100,
-                6: 144
-            },
-            // Callbacks
-            drag: null,
-            start: null,
-            stop: null
-        }, this.options, options);
-
-        N2Classes.nUIMouse.prototype.constructor.apply(this, arguments);
-
-        this.create();
-    }
-
-    nUIColumns.prototype = Object.create(N2Classes.nUIMouse.prototype);
-    nUIColumns.prototype.constructor = nUIColumns;
-
-    nUIColumns.prototype.create = function () {
-
-        this._setupHandles();
-
-        $(window).on('resize', $.proxy(this._resize, this));
-
-        this._mouseInit();
-    };
-
-    nUIColumns.prototype._destroy = function () {
-
-        this._mouseDestroy();
-        this.element
-            .removeData("uiNextendColumns")
-            .off(".columns")
-            .find("> .ui-column-width-handle")
-            .remove();
-
-        return this;
-    };
-
-    nUIColumns.prototype.getDenominator = function (i) {
-        if (this.options.denominators[i] === undefined) {
-            this.options.denominators[i] = i * 15;
-        }
-        return this.options.denominators[i];
-    };
-
-    nUIColumns.prototype._setupHandles = function () {
-        var o = this.options, handle, i, n, axis;
-
-        this.fractions = [];
-
-        var columnWidths = o.columns.split('+');
-        for (var i = 0; i < columnWidths.length; i++) {
-            this.fractions.push(new Fraction(columnWidths[i]));
-        }
-        this.currentDenominator = this.getDenominator(this.fractions.length);
-
-        var currentPercent = 0;
-        for (i = 0; i < this.fractions.length - 1; i++) {
-            axis = $("<div class='ui-column-width-handle'>");
-
-            currentPercent += this.fractions[i].valueOf() * 100;
-            axis
-                .data('i', i)
-                .data('percent', currentPercent)
-                .appendTo(this.element)
-                .on('mousedown', $.proxy(this._mouseDown, this));
-        }
-
-        this.handles = this.element.find('> .ui-column-width-handle');
-
-        this.handles.css({
-            '-ms-user-select': 'none',
-            '-moz-user-select': '-moz-none',
-            '-khtml-user-select': 'none',
-            '-webkit-user-select': 'none',
-            'user-select': 'none'
-        });
-
-        this._resize();
-    };
-
-    nUIColumns.prototype._resize = function () {
-        this.paddingLeft = parseInt(this.element.css('paddingLeft'));
-        this.paddingRight = parseInt(this.element.css('paddingRight'));
-
-        var containerWidth = this.element.width();
-
-        this.outerWidth = containerWidth + this.paddingLeft + this.paddingRight;
-        this.innerWidth = containerWidth - this.handles.length * this.options.gutter;
-
-        for (var i = 0; i < this.handles.length; i++) {
-            var currentPercent = this.handles.eq(i).data('percent');
-            this._updateResizer(i, currentPercent);
-        }
-    };
-
-    nUIColumns.prototype._updateResizer = function (i, currentPercent) {
-        this.handles.eq(i).css({
-            left: currentPercent + '%',
-            marginLeft: -2 + this.paddingLeft + (i + 0.5) * this.options.gutter + (this.innerWidth - this.outerWidth) * currentPercent / 100
-        })
-    };
-
-    nUIColumns.prototype._removeHandles = function () {
-        this.handles.remove();
-    };
-
-    nUIColumns.prototype.setOption = function (key, value) {
-        N2Classes.nUIWidgetBase.prototype.setOption.apply(this, arguments);
-
-        switch (key) {
-            case "columns":
-                this._removeHandles();
-                this._setupHandles();
-                break;
-            case "gutter":
-                this._resize();
-        }
-    };
-
-    nUIColumns.prototype._mouseCapture = function (event) {
-        var i, handle,
-            capture = false;
-
-        for (i = 0; i < this.handles.length; i++) {
-            handle = this.handles[i];
-            if (handle === event.target) {
-                capture = true;
-            }
-        }
-
-        return !this.options.disabled && capture;
-    };
-
-    nUIColumns.prototype._mouseStart = function (event) {
-        var index = $(event.target).data('i'),
-            cLeft = this.element.offset().left + 10,
-            containerWidth = this.element.width() - 20;
-
-        this.resizeContext = {
-            index: index,
-            cLeft: cLeft,
-            containerWidth: containerWidth,
-            startX: Math.max(0, Math.min(event.clientX - cLeft, containerWidth)),
-        };
-
-        this.currentFractions = [];
-        this.currentPercent = [];
-        for (var i = 0; i < this.fractions.length; i++) {
-            this.currentFractions.push(this.fractions[i].clone());
-            this.currentPercent.push(this.fractions[i].valueOf());
-        }
-
-        this.resizing = true;
-
-        $("body").css("cursor", "ew-resize");
-
-        this.element.addClass("ui-column-width-resizing");
-        this._trigger("start", event, this.ui());
-        return true;
-    };
-
-    nUIColumns.prototype._mouseDrag = function (event) {
-
-        var currentX = Math.max(0, Math.min(event.clientX - this.resizeContext.cLeft, this.resizeContext.containerWidth)),
-            fractionDifference = new Fraction(Math.round((currentX - this.resizeContext.startX) / (this.resizeContext.containerWidth / this.currentDenominator)), this.currentDenominator);
-
-        if (fractionDifference.compare(this.fractions[this.resizeContext.index].clone().mul(-1)) < 0) {
-            fractionDifference = this.fractions[this.resizeContext.index].clone().mul(-1);
-        }
-        if (fractionDifference.compare(this.fractions[this.resizeContext.index + 1]) > 0) {
-            fractionDifference = this.fractions[this.resizeContext.index + 1].clone();
-        }
-
-        this.currentFractions[this.resizeContext.index] = this.fractions[this.resizeContext.index].add(fractionDifference);
-        this.currentFractions[this.resizeContext.index + 1] = this.fractions[this.resizeContext.index + 1].sub(fractionDifference);
-
-        var currentPercent = 0;
-        this.currentPercent = [];
-        for (var i = 0; i < this.currentFractions.length; i++) {
-            var width = this.currentFractions[i].valueOf();
-            this.currentPercent.push(width);
-            currentPercent += width * 100;
-            this._updateResizer(i, currentPercent);
-        }
-
-        this._trigger("colwidth", event, this.ui());
-    };
-
-    nUIColumns.prototype._mouseStop = function (event) {
-
-        this.resizing = false;
-
-        $("body").css("cursor", "auto");
-
-        this._trigger("stop", event, this.ui());
-
-        this.fractions = this.currentFractions;
-
-        nextend.preventMouseUp();
-        return false;
-    };
-
-    nUIColumns.prototype.ui = function () {
-        return {
-            element: this.element,
-            originalFractions: this.fractions,
-            currentFractions: this.currentFractions,
-            currentPercent: this.currentPercent,
-            index: this.resizeContext.index
-        };
-    };
-
-    N2Classes.nUIWidgetBase.register('nUIColumns');
-
-    return nUIColumns;
-});
-N2D('nUILayerListItem', ['nUIMouse'], function ($, undefined) {
-    "use strict";
-
-    /**
-     * @memberOf N2Classes
-     *
-     * @class
-     * @constructor
-     * @augments nUIMouse
-
-     * @this nUILayerListItem
-     */
-    function nUILayerListItem(element, options) {
-        this.element = $(element);
-
-        this.widgetName = this.widgetName || 'nUILayerListItem';
-        this.widgetEventPrefix = "layerListItem";
-
-        this.options = $.extend({
-            UIManager: null,
-            layer: false,
-            $layer: null,
-            distance: 2
-        }, this.options, options);
-
-        N2Classes.nUIMouse.prototype.constructor.apply(this, arguments);
-
-        this.create();
-    }
-
-    nUILayerListItem.prototype = Object.create(N2Classes.nUIMouse.prototype);
-    nUILayerListItem.prototype.constructor = nUILayerListItem;
-
-    nUILayerListItem.prototype.create = function () {
-
-        this._mouseInit();
-    };
-
-    nUILayerListItem.prototype._mouseCapture = function (event, overrideHandle) {
-        return this.options.UIManager._mouseCapture(this.options, event, overrideHandle);
-    };
-
-    nUILayerListItem.prototype._mouseStart = function (event, overrideHandle, noActivation) {
-        this._trigger('start');
-        return this.options.UIManager._mouseStart(this.options, event, overrideHandle, noActivation);
-    };
-
-    nUILayerListItem.prototype._mouseDrag = function (event) {
-        return this.options.UIManager._mouseDrag(this.options, event);
-    };
-
-    nUILayerListItem.prototype._mouseStop = function (event, noPropagation) {
-        return this.options.UIManager._mouseStop(this.options, event, noPropagation);
-
-    };
-
-    nUILayerListItem.prototype._destroy = function () {
-        this._mouseDestroy();
-        return this;
-    };
-
-    N2Classes.nUIWidgetBase.register('nUILayerListItem');
-
-    return nUILayerListItem;
-});
-N2D('nUILayerList', ['nUIWidgetBase'], function ($, undefined) {
-    "use strict";
-
-    /**
-     * @memberOf N2Classes
-     *
-     * @class
-     * @constructor
-     * @augments nUIWidgetBase
-
-     * @this nUILayerList
-     */
-    function nUILayerList(element, options) {
-        this.element = $(element);
-
-        this.widgetName = this.widgetName || 'nUILayerList';
-        this.widgetEventPrefix = "layerList";
-
-        this.options = $.extend({
-            $fixed: null,
-            $scrolled: null
-        }, this.options, options);
-
-        N2Classes.nUIWidgetBase.prototype.constructor.apply(this, arguments);
-
-        this.create();
-    }
-
-    nUILayerList.prototype = Object.create(N2Classes.nUIWidgetBase.prototype);
-    nUILayerList.prototype.constructor = nUILayerList;
-
-    nUILayerList.prototype.create = function () {
-
-        this.scrollTimeout = null;
-    };
-
-
-    nUILayerList.prototype._mouseCapture = function (itemOptions, event, overrideHandle) {
-        return true;
-    };
-
-    nUILayerList.prototype._mouseStart = function (itemOptions, event, overrideHandle, noActivation) {
-
-        this.scrolledTop = this.options.$scrolled.offset().top;
-        this.scrolledHeight = this.options.$scrolled.height();
-        this.scrolledScroll = this.options.$scrolled.scrollTop();
-        this.scrolledMaxHeight = this.options.$scrolled[0].scrollHeight - this.scrolledHeight;
-
-        $('body').addClass('n2-ss-layer-list-move-layer');
-
-        this.context = {
-            placeholder: $('<div class="nextend-sortable-placeholder"><div></div></div>'),
-            mouse: {
-                y: event.pageY,
-                topModifier: itemOptions.$item.offset().top - event.pageY
-            },
-            $item: itemOptions.$item,
-            $clone: itemOptions.$item.clone()
-        };
-
-        this.context.$clone.addClass('n2-ss-ll-dragging').appendTo(this.options.$scrolled.find('> ul'));
-
-        this.context.droppables = this.options.mainContainer.getLLDroppables(itemOptions.layer);
-
-        this._cacheContainers();
-
-        this._trigger("start", event);
-
-        this._mouseDrag(itemOptions, event);
-    };
-
-    nUILayerList.prototype._scrollUp = function () {
-        if (this.scrolledTop > 0) {
-            if (this.scrollTimeout === null) {
-                this.scrollTimeout = setInterval($.proxy(function () {
-                    this.scrolledScroll -= 30;
-                    this.options.$scrolled.scrollTop(this.scrolledScroll);
-                }, this), 100);
-                this.scrolledScroll -= 30;
-                this.options.$scrolled.scrollTop(this.scrolledScroll);
-            }
-        }
-    };
-
-    nUILayerList.prototype._scrollDown = function () {
-        if (this.scrollTimeout === null) {
-            this.scrollTimeout = setInterval($.proxy(function () {
-                this.scrolledScroll += 30;
-                this.options.$scrolled.scrollTop(Math.min(this.scrolledScroll, this.scrolledMaxHeight));
-            }, this), 100);
-            this.scrolledScroll += 30;
-            this.options.$scrolled.scrollTop(Math.min(this.scrolledScroll, this.scrolledMaxHeight));
-        }
-    };
-
-    nUILayerList.prototype._mouseDrag = function (itemOptions, event) {
-
-        this.scrolledTop = this.options.$scrolled.offset().top;
-
-        if (this.scrolledHeight > 60) {
-            if (event.pageY < this.scrolledTop + 30) {
-                this._scrollUp();
-            } else if (event.pageY > this.scrolledTop + this.scrolledHeight - 30) {
-                this._scrollDown();
-            } else {
-                clearInterval(this.scrollTimeout);
-                this.scrollTimeout = null;
-            }
-        }
-
-
-        this.scrolledScroll = this.options.$scrolled.scrollTop();
-
-        var y = event.pageY - this.scrolledTop + this.scrolledScroll;
-
-        var targetContainer = this._findInnerContainer(y);
-        if (targetContainer === false) {
-            targetContainer = this.context.droppables[0];
-        }
-
-        if (typeof targetContainer.layers === "undefined") {
-            targetContainer.layers = this._cacheContainerLayers(targetContainer);
-        }
-
-        var targetIndex = this._findNormalIndex(y, targetContainer);
-
-        if (targetIndex > 0) {
-            this.context.placeholder.insertAfter(targetContainer.layers[targetIndex - 1].layer.layerRow);
-        } else {
-            this.context.placeholder.prependTo(targetContainer.$container);
-        }
-
-        this.context.targetIndex = targetIndex;
-        if (this.context.targetContainer && this.context.targetContainer != targetContainer) {
-            this.context.targetContainer.layer.layerRow.removeClass('n2-ss-ll-dragging-parent');
-        }
-
-        this.context.targetContainer = targetContainer;
-        this.context.targetContainer.layer.layerRow.addClass('n2-ss-ll-dragging-parent');
-
-        this.context.$clone.css({
-            top: y + this.context.mouse.topModifier
-        });
-
-    };
-
-    nUILayerList.prototype._mouseStop = function (itemOptions, event, noPropagation) {
-
-        if (this.scrollTimeout !== null) {
-            clearInterval(this.scrollTimeout);
-            this.scrollTimeout = null;
-        }
-
-        this.context.placeholder.remove();
-
-        this.context.$clone.remove();
-
-        this.context.targetContainer.layer.layerRow.removeClass('n2-ss-ll-dragging-parent');
-
-        var targetIndex = this.context.targetIndex,
-            targetContainer = this.context.targetContainer,
-            originalIndex = itemOptions.layer.getIndex(),
-            newIndex = -1;
-
-
-        if (this.context.targetContainer.layers.length === 0) {
-            newIndex = 0;
-        } else {
-            var nextLayer = false,
-                prevLayer = false;
-
-            if (this.context.targetContainer.layers[targetIndex]) {
-                nextLayer = this.context.targetContainer.layers[targetIndex].layer;
-            }
-
-            if (this.context.targetContainer.layers[targetIndex - 1]) {
-                prevLayer = this.context.targetContainer.layers[targetIndex - 1].layer;
-            }
-
-            if (nextLayer === itemOptions.layer || prevLayer === itemOptions.layer) {
-                newIndex = -1;
-            } else {
-                if (targetContainer.layer.container.allowedPlacementMode === 'absolute') {
-                    if (nextLayer) {
-                        //itemOptions.layer.layer.detach();
-                        newIndex = nextLayer.getIndex() + 1;
-                    } else if (prevLayer) {
-                        //itemOptions.layer.layer.detach();
-                        newIndex = prevLayer.getIndex();
-                    }
-                } else {
-                    if (prevLayer) {
-                        //itemOptions.layer.layer.detach();
-                        newIndex = prevLayer.getIndex() + 1;
-                    } else if (nextLayer) {
-                        //itemOptions.layer.layer.detach();
-                        newIndex = nextLayer.getIndex();
-                    }
-                }
-            }
-        }
-        if (newIndex >= 0) {
-            if (newIndex > originalIndex) {
-                newIndex--;
-            }
-            if (itemOptions.layer.type === 'col') {
-                targetContainer.layer.moveCol(originalIndex, newIndex);
-            } else {
-                targetContainer.layer.container.insertLayerAt(itemOptions.layer, newIndex);
-                itemOptions.layer.onCanvasUpdate(originalIndex, targetContainer.layer, newIndex);
-            }
-        }
-
-        delete this.context;
-
-        this._trigger("stop", event);
-
-
-        $('body').removeClass('n2-ss-layer-list-move-layer');
-    };
-
-    nUILayerList.prototype.cancel = function (itemOptions) {
-    };
-
-    nUILayerList.prototype._cacheContainers = function () {
-        for (var i = 0; i < this.context.droppables.length; i++) {
-            var obj = this.context.droppables[i];
-            obj.top = obj.$container.offset().top - this.scrolledTop + this.scrolledScroll - 15;
-            obj.height = obj.$container.outerHeight();
-            obj.bottom = obj.top + obj.height + 15;
-        }
-    };
-
-    nUILayerList.prototype._findInnerContainer = function (y) {
-        for (var i = this.context.droppables.length - 1; i >= 0; i--) {
-            var obj = this.context.droppables[i];
-            if (obj.top <= y && obj.bottom >= y) {
-                return obj;
-            }
-        }
-        return false;
-    };
-
-    nUILayerList.prototype._cacheContainerLayers = function (droppable) {
-        var layerObjects = [],
-            layers = droppable.layer.container.getSortedLayers();
-
-        for (var i = 0; i < layers.length; i++) {
-            //if (layers[i].layerRow[0] === this.context.$item[0]) continue;
-            var obj = {
-                layer: layers[i]
-            };
-            obj.top = obj.layer.layerRow.offset().top - this.scrolledTop + this.scrolledScroll;
-            obj.height = obj.layer.layerRow.outerHeight();
-            obj.bottom = obj.top + obj.height / 2;
-            obj.index = i;
-            layerObjects.push(obj);
-        }
-
-        if (droppable.layer.container.allowedPlacementMode == 'absolute') {
-            layerObjects.reverse();
-        }
-
-        return layerObjects;
-    };
-
-    nUILayerList.prototype._findNormalIndex = function (y, targetContainer) {
-        for (var i = 0; i < targetContainer.layers.length; i++) {
-            var obj = targetContainer.layers[i];
-            if (y <= obj.bottom) {
-                return i;
-            }
-        }
-        return targetContainer.layers.length;
-    };
-
-    N2Classes.nUIWidgetBase.register('nUILayerList');
-
-    return nUILayerList;
-});
 N2D('ItemButton', ['Item'], function ($, undefined) {
     "use strict";
 
@@ -16751,7 +16824,7 @@ N2D('ItemButton', ['Item'], function ($, undefined) {
         this.addedFont('link', 'font');
         this.addedStyle('button', 'style');
 
-        this.generator.registerFields(['#item_buttoncontent', '#linkitem_buttonlink-1', '#item_buttonclass']);
+        this.generator.registerFields(['#item_buttoncontent', '#item_buttonhref', '#item_buttonclass']);
     };
 
     ItemButton.prototype.getName = function (data) {
@@ -16759,10 +16832,6 @@ N2D('ItemButton', ['Item'], function ($, undefined) {
     };
 
     ItemButton.prototype.parseAll = function (data) {
-        var link = data.link.split('|*|');
-        data.url = link[0];
-        data.target = link[1];
-        delete data.link;
 
         data.classes = '';
 
@@ -16808,7 +16877,7 @@ N2D('ItemHeading', ['Item'], function ($, undefined) {
 
     ItemHeading.prototype.getDefault = function () {
         return {
-            link: '#|*|_self',
+            href: '',
             font: '',
             style: ''
         }
@@ -16820,7 +16889,7 @@ N2D('ItemHeading', ['Item'], function ($, undefined) {
         this.addedFont('hover', 'font');
         this.addedStyle('heading', 'style');
 
-        this.generator.registerFields(['#item_headingheading', '#linkitem_headinglink-1', '#item_headingclass']);
+        this.generator.registerFields(['#item_headingheading', '#item_headinghref', '#item_headingclass']);
     };
 
     ItemHeading.prototype.getName = function (data) {
@@ -16829,12 +16898,6 @@ N2D('ItemHeading', ['Item'], function ($, undefined) {
 
     ItemHeading.prototype.parseAll = function (data) {
         data.uid = $.fn.uid();
-
-        var link = data.link.split('|*|');
-        data.url = link[0];
-        data.target = link[1];
-        delete data.link;
-
 
         if (parseInt(data.fullwidth)) {
             data.display = 'block';
@@ -16851,7 +16914,7 @@ N2D('ItemHeading', ['Item'], function ($, undefined) {
 
         N2Classes.Item.prototype.parseAll.apply(this, arguments);
 
-        if (data['url'] == '#' || data['url'] == '') {
+        if (data['href'] == '#' || data['href'] == '') {
             data['afontclass'] = '';
             data['astyleclass'] = '';
         } else {
@@ -16870,7 +16933,7 @@ N2D('ItemHeading', ['Item'], function ($, undefined) {
                     display: data.display
                 }).appendTo($node);
 
-        if (data['url'] == '#' || data['url'] == '') {
+        if (data['href'] == '#' || data['href'] == '') {
             $heading.html(data.heading);
         } else {
             $heading.append($('<a style="display:' + data.display + ';" href="#" class="' + data.afontclass + ' ' + data.astyleclass + ' n2-ow" onclick="return false;">' + data.heading + '</a>'));
@@ -16903,7 +16966,7 @@ N2D('ItemImage', ['Item'], function ($, undefined) {
     ItemImage.prototype.getDefault = function () {
         return {
             size: 'auto|*|auto',
-            link: '#|*|_self',
+            href: '',
             style: ''
         }
     };
@@ -16911,7 +16974,7 @@ N2D('ItemImage', ['Item'], function ($, undefined) {
     ItemImage.prototype.added = function () {
         this.needFill = ['image', 'cssclass'];
 
-        this.generator.registerFields(['#item_imageimage', '#item_imagealt', '#item_imagetitle', '#linkitem_imagelink-1', '#item_imagecssclass']);
+        this.generator.registerFields(['#item_imageimage', '#item_imagealt', '#item_imagetitle', '#item_imagehref', '#item_imagecssclass']);
     };
 
     ItemImage.prototype.getName = function (data) {
@@ -16924,18 +16987,13 @@ N2D('ItemImage', ['Item'], function ($, undefined) {
         data.height = size[1];
         delete data.size;
 
-        var link = data.link.split('|*|');
-        data.url = link[0];
-        data.target = link[1];
-        delete data.link;
-
         N2Classes.Item.prototype.parseAll.apply(this, arguments);
 
         if (data.image != this.values.image) {
             data.image = nextend.imageHelper.fixed(data.image);
 
             if (this.layer.placement.getType() == 'absolute') {
-                this.resizeLayerToImage(data.image);
+                this.resizeLayerToImage(nextend.imageHelper.fixed(data.image));
             }
         } else {
             data.image = nextend.imageHelper.fixed(data.image);
@@ -16956,7 +17014,7 @@ N2D('ItemImage', ['Item'], function ($, undefined) {
         var $node = $('<div class="' + data.styleclass + ' n2-ss-img-wrapper n2-ow" style="overflow:hidden"></div>'),
             $a = $node;
 
-        if (data['url'] != '#' && data['url'] != '') {
+        if (data['href'] != '#' && data['href'] != '') {
             $a = $('<a href="#" class="n2-ow" onclick="return false;" style="display: block;background: none !important;"></a>').appendTo($node);
         }
 
@@ -17219,10 +17277,12 @@ N2D('ItemVimeo', ['Item'], function ($, undefined) {
                 N2Classes.AjaxHelper.getJSON('https://vimeo.com/api/v2/video/' + encodeURI(videoCode) + '.json').done($.proxy(function (data) {
                     $('#item_vimeoimage').val(data[0].thumbnail_large).trigger('change');
                 }, this)).fail(function (data) {
-                    N2Classes.Notification.error(data.responseText);
+					if (data.privateurl == 0) {
+						N2Classes.Notification.error('Video not found or private.');
+					}
                 });
             } else {
-                N2Classes.Notification.error('The provided URL does not match any known Vimeo url or code!');
+                N2Classes.Notification.error('The provided URL does not match any known Vimeo url or code.');
             }
         }
     };

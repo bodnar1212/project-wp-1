@@ -9,11 +9,21 @@ class N2WordpressAssetInjector {
 
     public static function init() {
 
-        add_action('init', 'N2WordpressAssetInjector::outputStart', self::$priority);
-        add_action('shutdown', 'N2WordpressAssetInjector::closeOutputBuffers', -1 * self::$priority);
+        /**
+         * Borlabs cache
+         * @url https://borlabs.io/download/
+         */
+        if (defined('BORLABS_CACHE_SLUG') && !is_admin()) {
+            add_action('template_redirect', 'N2WordpressAssetInjector::outputStart', -1 * self::$priority);
+            add_action('shutdown', 'N2WordpressAssetInjector::closeOutputBuffers', -1 * self::$priority);
 
-        add_action('pp_end_html', 'N2WordpressAssetInjector::closeOutputBuffers', -10000); // ProPhoto 6 theme: we must close the buffer before the cache
-        add_action('headway_html_close', 'N2WordpressAssetInjector::closeOutputBuffers', self::$priority); // Headway theme
+        } else {
+            add_action('init', 'N2WordpressAssetInjector::outputStart', self::$priority);
+            add_action('shutdown', 'N2WordpressAssetInjector::closeOutputBuffers', -1 * self::$priority);
+
+            add_action('pp_end_html', 'N2WordpressAssetInjector::closeOutputBuffers', -10000); // ProPhoto 6 theme: we must close the buffer before the cache
+            add_action('headway_html_close', 'N2WordpressAssetInjector::closeOutputBuffers', self::$priority); // Headway theme
+        }
 
 
         add_action('wp_print_scripts', 'N2WordpressAssetInjector::injectCSSComment');
@@ -25,6 +35,24 @@ class N2WordpressAssetInjector {
         if (defined('MCGFUIDGEN_PLUGIN_VERSION')) {
             remove_action('init', 'mcgfuidgen_head', 0);
             add_action('init', 'mcgfuidgen_head', 1000000);
+        }
+
+        /**
+         * Fix for KeyCDN cache enabled
+         * @url https://wordpress.org/plugins/cache-enabler/
+         */
+        if (class_exists('Cache_Enabler', false)) {
+            add_action('template_redirect', function () {
+                ob_start("N2WordpressAssetInjector::output_callback");
+            }, 0);
+        }
+
+        /**
+         * Fix for Hyper Cache
+         * @url https://wordpress.org/plugins/hyper-cache/
+         */
+        if (function_exists('hyper_cache_callback')) {
+            add_filter('cache_buffer', 'N2WordpressAssetInjector::platformRenderEnd');
         }
     }
 
@@ -74,6 +102,14 @@ class N2WordpressAssetInjector {
          * @see https://wordpress.org/plugins/ultimate-reviews/
          */
         if (function_exists('EWD_URP_add_ob_start')) {
+            ob_start();
+        }
+
+        /**
+         * Cart66 closes our output buffer in forceDownload method
+         * @url http://www.cart66.com
+         */
+        if (class_exists('Cart66')) {
             ob_start();
         }
 

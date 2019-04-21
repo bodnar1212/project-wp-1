@@ -319,7 +319,7 @@ N2D('WindowManager', function ($, undefined) {
 
     var windowManagerInstance = new WindowManager();
     /**
-     * @returns {WindowManager}
+     * @returns {N2Classes.WindowManager}
      */
     WindowManager.get = function () {
         return windowManagerInstance;
@@ -1049,10 +1049,10 @@ N2D('NextendCSS', function ($, undefined) {
     }
 
     NextendCSS.prototype.add = function (css) {
-        var head = document.head || document.getElementsByTagName('head')[0],
+        var body = document.body || document.getElementsByTagName('body')[0],
             style = document.createElement('style');
 
-        head.appendChild(style);
+        body.appendChild(style);
 
         style.type = 'text/css';
         if (style.styleSheet) {
@@ -1506,7 +1506,7 @@ N2D('NextendModal', function ($, undefined) {
         $select = $group.find('select');
 
         for (var k in values) {
-            $select.append('<option value="' + k + '">' + values[k] + '</option>');
+            $('<option value="' + k + '"></option>').text(values[k]).appendTo($select);
         }
         $select.prop('selectedIndex', 0);
 
@@ -1866,7 +1866,7 @@ N2D('Spectrum', function ($, undefined) {
             var c = tiny.toHsl().l < 0.5 ? "n2-sp-thumb-el n2-sp-thumb-dark" : "n2-sp-thumb-el n2-sp-thumb-light";
             c += (tinycolor.equals(color, p[i])) ? " n2-sp-thumb-active" : "";
 
-            var swatchStyle = rgbaSupport ? ("background-color:" + tiny.toRgbString()) : "filter:" + tiny.toFilter();
+            var swatchStyle = "background-color:" + tiny.toRgbString();
             html.push('<span title="' + tiny.toRgbString() + '" data-color="' + tiny.toRgbString() + '" class="' + c + '"><span class="n2-sp-thumb-inner" style="' + swatchStyle + ';" /></span>');
         }
         return "<div class='n2-sp-cf " + className + "'>" + html.join('') + "</div>";
@@ -2351,17 +2351,8 @@ N2D('Spectrum', function ($, undefined) {
                 var rgb = realColor.toRgb();
                 rgb.a = 0;
                 var realAlpha = tinycolor(rgb).toRgbString();
-                var gradient = "linear-gradient(left, " + realAlpha + ", " + realHex + ")";
-
-                if (IE) {
-                    alphaSliderInner.css("filter", tinycolor(realAlpha).toFilter({gradientType: 1}, realHex));
-                }
-                else {
-                    alphaSliderInner.css("background", "-webkit-" + gradient);
-                    alphaSliderInner.css("background", "-moz-" + gradient);
-                    alphaSliderInner.css("background", "-ms-" + gradient);
-                    alphaSliderInner.css("background", gradient);
-                }
+                var gradient = "linear-gradient(to right, " + realAlpha + ", " + realHex + ")";
+                alphaSliderInner.css("background", gradient);
             }
 
 
@@ -3677,230 +3668,6 @@ N2D('ExpertMode', function ($, undefined) {
         return new ExpertMode(app, allowed);
     }
 });
-/*!
- * jQuery Mousewheel 3.1.12
- *
- * Copyright 2014 jQuery Foundation and other contributors
- * Released under the MIT license.
- * http://jquery.org/license
- */
-
-N2R('$', function ($) {
-    var toFix = ['wheel', 'mousewheel', 'DOMMouseScroll', 'MozMousePixelScroll'],
-        toBind = ('onwheel' in document || document.documentMode >= 9) ?
-            ['wheel'] : ['mousewheel', 'DomMouseScroll', 'MozMousePixelScroll'],
-        slice = Array.prototype.slice,
-        nullLowestDeltaTimeout, lowestDelta;
-
-    if ($.event.fixHooks) {
-        for (var i = toFix.length; i;) {
-            $.event.fixHooks[toFix[--i]] = $.event.mouseHooks;
-        }
-    }
-
-    var special = $.event.special.mousewheel = {
-        version: '3.1.12',
-
-        setup: function () {
-            if (this.addEventListener) {
-                for (var i = toBind.length; i;) {
-                    this.addEventListener(toBind[--i], handler, false);
-                }
-            } else {
-                this.onmousewheel = handler;
-            }
-            // Store the line height and page height for this particular element
-            $.data(this, 'mousewheel-line-height', special.getLineHeight(this));
-            $.data(this, 'mousewheel-page-height', special.getPageHeight(this));
-        },
-
-        teardown: function () {
-            if (this.removeEventListener) {
-                for (var i = toBind.length; i;) {
-                    this.removeEventListener(toBind[--i], handler, false);
-                }
-            } else {
-                this.onmousewheel = null;
-            }
-            // Clean up the data we added to the element
-            $.removeData(this, 'mousewheel-line-height');
-            $.removeData(this, 'mousewheel-page-height');
-        },
-
-        getLineHeight: function (elem) {
-            var $elem = $(elem),
-                $parent = $elem['offsetParent' in $.fn ? 'offsetParent' : 'parent']();
-            if (!$parent.length) {
-                $parent = $('body');
-            }
-            return parseInt($parent.css('fontSize'), 10) || parseInt($elem.css('fontSize'), 10) || 16;
-        },
-
-        getPageHeight: function (elem) {
-            return $(elem).height();
-        },
-
-        settings: {
-            adjustOldDeltas: true, // see shouldAdjustOldDeltas() below
-            normalizeOffset: true  // calls getBoundingClientRect for each event
-        }
-    };
-
-    $.fn.extend({
-        mousewheel: function (fn) {
-            return fn ? this.bind('mousewheel', fn) : this.trigger('mousewheel');
-        },
-
-        unmousewheel: function (fn) {
-            return this.unbind('mousewheel', fn);
-        }
-    });
-
-
-    function handler(event) {
-        var orgEvent = event || window.event,
-            args = slice.call(arguments, 1),
-            delta = 0,
-            deltaX = 0,
-            deltaY = 0,
-            absDelta = 0,
-            offsetX = 0,
-            offsetY = 0;
-        event = $.event.fix(orgEvent);
-        event.type = 'mousewheel';
-
-        // Old school scrollwheel delta
-        if ('detail' in orgEvent) {
-            deltaY = orgEvent.detail * -1;
-        }
-        if ('wheelDelta' in orgEvent) {
-            deltaY = orgEvent.wheelDelta;
-        }
-        if ('wheelDeltaY' in orgEvent) {
-            deltaY = orgEvent.wheelDeltaY;
-        }
-        if ('wheelDeltaX' in orgEvent) {
-            deltaX = orgEvent.wheelDeltaX * -1;
-        }
-
-        // Firefox < 17 horizontal scrolling related to DOMMouseScroll event
-        if ('axis' in orgEvent && orgEvent.axis === orgEvent.HORIZONTAL_AXIS) {
-            deltaX = deltaY * -1;
-            deltaY = 0;
-        }
-
-        // Set delta to be deltaY or deltaX if deltaY is 0 for backwards compatabilitiy
-        delta = deltaY === 0 ? deltaX : deltaY;
-
-        // New school wheel delta (wheel event)
-        if ('deltaY' in orgEvent) {
-            deltaY = orgEvent.deltaY * -1;
-            delta = deltaY;
-        }
-        if ('deltaX' in orgEvent) {
-            deltaX = orgEvent.deltaX;
-            if (deltaY === 0) {
-                delta = deltaX * -1;
-            }
-        }
-
-        // No change actually happened, no reason to go any further
-        if (deltaY === 0 && deltaX === 0) {
-            return;
-        }
-
-        // Need to convert lines and pages to pixels if we aren't already in pixels
-        // There are three delta modes:
-        //   * deltaMode 0 is by pixels, nothing to do
-        //   * deltaMode 1 is by lines
-        //   * deltaMode 2 is by pages
-        if (orgEvent.deltaMode === 1) {
-            var lineHeight = $.data(this, 'mousewheel-line-height');
-            delta *= lineHeight;
-            deltaY *= lineHeight;
-            deltaX *= lineHeight;
-        } else if (orgEvent.deltaMode === 2) {
-            var pageHeight = $.data(this, 'mousewheel-page-height');
-            delta *= pageHeight;
-            deltaY *= pageHeight;
-            deltaX *= pageHeight;
-        }
-
-        // Store lowest absolute delta to normalize the delta values
-        absDelta = Math.max(Math.abs(deltaY), Math.abs(deltaX));
-
-        if (!lowestDelta || absDelta < lowestDelta) {
-            lowestDelta = absDelta;
-
-            // Adjust older deltas if necessary
-            if (shouldAdjustOldDeltas(orgEvent, absDelta)) {
-                lowestDelta /= 40;
-            }
-        }
-
-        // Adjust older deltas if necessary
-        if (shouldAdjustOldDeltas(orgEvent, absDelta)) {
-            // Divide all the things by 40!
-            delta /= 40;
-            deltaX /= 40;
-            deltaY /= 40;
-        }
-
-        // Get a whole, normalized value for the deltas
-        delta = Math[delta >= 1 ? 'floor' : 'ceil'](delta / lowestDelta);
-        deltaX = Math[deltaX >= 1 ? 'floor' : 'ceil'](deltaX / lowestDelta);
-        deltaY = Math[deltaY >= 1 ? 'floor' : 'ceil'](deltaY / lowestDelta);
-
-        // Normalise offsetX and offsetY properties
-        if (special.settings.normalizeOffset && this.getBoundingClientRect) {
-            var boundingRect = this.getBoundingClientRect();
-            offsetX = event.clientX - boundingRect.left;
-            offsetY = event.clientY - boundingRect.top;
-        }
-
-        // Add information to the event object
-        event.deltaX = deltaX;
-        event.deltaY = deltaY;
-        event.deltaFactor = lowestDelta;
-        event.offsetX = offsetX;
-        event.offsetY = offsetY;
-        // Go ahead and set deltaMode to 0 since we converted to pixels
-        // Although this is a little odd since we overwrite the deltaX/Y
-        // properties with normalized deltas.
-        event.deltaMode = 0;
-
-        // Add event and delta to the front of the arguments
-        args.unshift(event, delta, deltaX, deltaY);
-
-        // Clearout lowestDelta after sometime to better
-        // handle multiple device types that give different
-        // a different lowestDelta
-        // Ex: trackpad = 3 and mouse wheel = 120
-        if (nullLowestDeltaTimeout) {
-            clearTimeout(nullLowestDeltaTimeout);
-        }
-        nullLowestDeltaTimeout = setTimeout(nullLowestDelta, 200);
-
-        return ($.event.dispatch || $.event.handle).apply(this, args);
-    }
-
-    function nullLowestDelta() {
-        lowestDelta = null;
-    }
-
-    function shouldAdjustOldDeltas(orgEvent, absDelta) {
-        // If this is an older event and the delta is divisable by 120,
-        // then we are assuming that the browser is treating this as an
-        // older mouse wheel event and that we should divide the deltas
-        // by 40 to try and get a more usable deltaFactor.
-        // Side note, this actually impacts the reported scroll distance
-        // in older browsers and can cause scrolling to be slower than native.
-        // Turn this off by setting $.event.special.mousewheel.settings.adjustOldDeltas to false.
-        return special.settings.adjustOldDeltas && orgEvent.type === 'mousewheel' && absDelta % 120 === 0;
-    }
-
-});
-
 N2D('Form', function ($, undefined) {
 
     $(window).ready(function () {
@@ -4370,7 +4137,7 @@ N2D('NotificationStackModal', ['NotificationStack'], function ($, undefined) {
 
     NotificationStackModal.prototype._init = function (bar) {
         var settings = $('<div class="n2-notification-settings"></div>')
-            .append($('<div class="n2-button n2-button-normal n2-button-s n2-button-blue n2-radius-s n2-h5 n2-uc n2-notification-clear">Got it!</div>').on('click', $.proxy(this.clear, this)))
+            .append($('<div class="n2-button n2-button-normal n2-button-s n2-button-blue n2-radius-s n2-h5 n2-uc n2-notification-clear">'+n2_('Got it!')+'</div>').on('click', $.proxy(this.clear, this)))
             .append(this.importantOnlyNode);
 
         this.messageContainer = $('<div class="n2-notification-center n2-border-radius"></div>')
@@ -4501,25 +4268,9 @@ N2D('BasicCSSFont', ['BasicCSSSkeleton'], function ($, undefined) {
             afont: $('#layerfamily'),
             color: $('#layercolor'),
             size: $('#layersize'),
-            bold: $('#layerweight'),
             weight: $('#layerweight'),
             lineheight: $('#layerlineheight'),
-            align: $('#layertextalign').on('nextendChange', $.proxy(function (e) {
-                if (!this.manager.underActivate && !this.manager.inPresetList) {
-                    switch ($(e.currentTarget).val()) {
-                        case 'left':
-                        case 'justify':
-                            nextend.currentEditor.fragmentEditor.mainContainer.getSelectedLayer().setProperty('align', 'left', 'layer');
-                            break;
-                        case 'right':
-                            nextend.currentEditor.fragmentEditor.mainContainer.getSelectedLayer().setProperty('align', 'right', 'layer');
-                            break;
-                        default:
-                            nextend.currentEditor.fragmentEditor.mainContainer.getSelectedLayer().setProperty('align', 'center', 'layer');
-                            break;
-                    }
-                }
-            }, this)),
+            align: $('#layertextalign'),
             underline: $('#layerdecoration'),
             italic: $('#layerdecoration')
 
@@ -4530,6 +4281,24 @@ N2D('BasicCSSFont', ['BasicCSSSkeleton'], function ($, undefined) {
 
     BasicCSSFont.prototype = Object.create(N2Classes.BasicCSSSkeleton.prototype);
     BasicCSSFont.prototype.constructor = BasicCSSFont;
+
+    BasicCSSFont.prototype.setValue = function (value) {
+        for (var i = 0; i < value.length; i++) {
+            if (value[i].bold !== undefined) {
+                if (value[i].weight !== undefined) {
+                    delete value[i].bold;
+                } else {
+                    if (value[i].bold == 1) {
+                        value[i].weight = 700;
+                    } else if (value[i].bold > 0) {
+                        value[i].weight = value[i].bold;
+                    }
+                    delete value[i].bold;
+                }
+            }
+        }
+        this.value = value;
+    }
 
     BasicCSSFont.prototype._transformsize = function (value) {
         return value.split('||').join('|*|');
@@ -4701,10 +4470,14 @@ N2D('BasicCSSSkeleton', function ($, undefined) {
         this.$visualsLabel.html(this.visuals[index].field.getLabel());
 
         nextend[this._singular + 'Manager'].getDataFromController(this.visuals[index].value, {previewMode: this.visuals[index].mode}, $.proxy(function (value, tabs) {
-            this.value = value;
+            this.setValue(value);
             this.setTabs(tabs);
         }, this));
     };
+
+    BasicCSSSkeleton.prototype.setValue = function (value) {
+        this.value = value;
+    }
 
     BasicCSSSkeleton.prototype.activateTab = function (index) {
         this.isReload = true;
@@ -5781,44 +5554,6 @@ N2D('FormElementImage', ['FormElement'], function ($, undefined) {
         nextend.imageHelper.openLightbox($.proxy(this.val, this));
     };
 
-    FormElementImage.prototype.edit = function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var imageSrc = nextend.imageHelper.fixed(this.element.val()),
-            image = $('<img src="' + imageSrc + '" />');
-
-        if (imageSrc.substr(0, 2) === '//') {
-            imageSrc = location.protocol + imageSrc;
-        }
-
-        window.nextend.getFeatherEditor().done($.proxy(function () {
-            nextend.featherEditor.launch({
-                image: image.get(0),
-                hiresUrl: imageSrc,
-                onSave: $.proxy(this.aviarySave, this),
-                onSaveHiRes: $.proxy(this.aviarySave, this)
-            });
-        }, this));
-    };
-
-    FormElementImage.prototype.aviarySave = function (id, src) {
-
-        N2Classes.AjaxHelper.ajax({
-            type: "POST",
-            url: N2Classes.AjaxHelper.makeAjaxUrl(window.nextend.featherEditor.ajaxUrl, {
-                nextendaction: 'saveImage'
-            }),
-            data: {
-                aviaryUrl: src
-            },
-            dataType: 'json'
-        })
-            .done($.proxy(function (response) {
-                this.val(nextend.imageHelper.make(response.data.image));
-                nextend.featherEditor.close();
-            }, this));
-    };
-
     FormElementImage.prototype.focus = function (shouldOpen) {
         if (shouldOpen) {
             this.open();
@@ -5879,7 +5614,7 @@ N2D('FormElementList', ['FormElement'], function ($, undefined) {
      * @param relatedFields
      * @constructor
      */
-    function FormElementList(id, multiple, relatedFields) {
+    function FormElementList(id, multiple, relatedFields, relatedValueFields) {
 
         this.separator = '||';
 
@@ -5897,6 +5632,21 @@ N2D('FormElementList', ['FormElement'], function ($, undefined) {
             }
 
             this.relatedFields.toggleClass('n2-hidden', this.isOff(this.element.val()));
+        }
+
+        this.relatedValueFields = false;
+        if (relatedValueFields !== undefined && relatedValueFields.length) {
+            var value = this.element.val();
+            this.relatedValueFields = $('');
+            for (var i = 0; i < relatedValueFields.length; i++) {
+                var $field = $('[data-field="' + relatedValueFields[i].field + '"]')
+                    .data('show-values', relatedValueFields[i].values);
+
+                $field.toggleClass('n2-hidden', $.inArray(value, relatedValueFields[i].values) === -1);
+
+                this.relatedValueFields = this.relatedValueFields.add($field);
+            }
+
         }
 
         N2Classes.FormElement.prototype.constructor.apply(this, arguments);
@@ -5938,7 +5688,16 @@ N2D('FormElementList', ['FormElement'], function ($, undefined) {
     FormElementList.prototype.setHiddenValue = function (value) {
         this.element.val(value);
 
-        if (this.relatedFields) this.relatedFields.toggleClass('n2-hidden', this.isOff(value));
+        if (this.relatedFields) {
+            this.relatedFields.toggleClass('n2-hidden', this.isOff(value));
+        }
+
+        if (this.relatedValueFields) {
+            this.relatedValueFields.each(function () {
+                var $el = $(this);
+                $el.toggleClass('n2-hidden', $.inArray(value, $el.data('show-values')) === -1);
+            });
+        }
     };
 
     FormElementList.prototype.isOff = function (value) {
@@ -6323,10 +6082,19 @@ N2D('FormElementRadio', ['FormElement'], function ($, undefined) {
      * @param values
      * @constructor
      */
-    function FormElementRadio(id, values) {
+    function FormElementRadio(id, values, relatedFields) {
         this.element = $('#' + id);
 
         this.values = values;
+        this.relatedFields = false;
+        if (relatedFields !== undefined && relatedFields.length) {
+            this.relatedFields = $('');
+            for (var i = 0; i < relatedFields.length; i++) {
+                this.relatedFields = this.relatedFields.add($('[data-field="' + relatedFields[i] + '"]'));
+            }
+
+            this.relatedFields.toggleClass('n2-hidden', this.isOff(this.element.val()));
+        }
 
         this.parent = this.element.parent();
 
@@ -6349,7 +6117,7 @@ N2D('FormElementRadio', ['FormElement'], function ($, undefined) {
     FormElementRadio.prototype.changeSelectedIndex = function (index) {
         var value = this.values[index];
 
-        this.element.val(value);
+        this.setValue(value);
 
         this.setSelected(index);
 
@@ -6367,7 +6135,7 @@ N2D('FormElementRadio', ['FormElement'], function ($, undefined) {
         }
 
         if (index != '-1') {
-            this.element.val(this.values[index]);
+            this.setValue(this.values[index]);
             this.setSelected(index);
 
             this.triggerInsideChange();
@@ -6406,6 +6174,7 @@ N2D('FormElementRadio', ['FormElement'], function ($, undefined) {
         this.options = this.options.add(option);
         return i;
     };
+
     FormElementRadio.prototype.removeTabOption = function (value) {
         var i = $.inArray(value, this.values);
         var option = this.options.eq(i);
@@ -6423,6 +6192,18 @@ N2D('FormElementRadio', ['FormElement'], function ($, undefined) {
 
     FormElementRadio.prototype.moveTab = function (originalIndex, targetIndex) {
 
+    };
+
+    FormElementRadio.prototype.setValue = function (value) {
+        this.element.val(value);
+
+        if (this.relatedFields) {
+            this.relatedFields.toggleClass('n2-hidden', this.isOff(value));
+        }
+    };
+
+    FormElementRadio.prototype.isOff = function (value) {
+        return value === '' || value === '0' || value === 0 || value === 'off';
     };
 
     return FormElementRadio;
@@ -6940,7 +6721,7 @@ N2D('FormElementUrl', ['FormElement'], function ($, undefined) {
 
     /**
      * @memberOf N2Classes
-     * 
+     *
      * @param id
      * @param parameters
      * @constructor
@@ -7049,7 +6830,7 @@ N2D('FormElementUrl', ['FormElement'], function ($, undefined) {
                             .trigger('keyup').focus();
 
                         this.content.append('<hr style="margin: 0 -20px;"/>');
-                        var external = $('<div class="n2-input-button"><input placeholder="External url" type="text" id="external-url" name="external-url" value="" /><a href="#" class="n2-button n2-button-normal n2-button-l n2-radius-s n2-button-green n2-uc n2-h4">Insert</a></div>')
+                        var external = $('<div class="n2-input-button"><input placeholder="' + n2_("External url") + '" type="text" id="external-url" name="external-url" value="" /><a href="#" class="n2-button n2-button-normal n2-button-l n2-radius-s n2-button-green n2-uc n2-h4">' + n2_("Insert") + '</a></div>')
                                 .css({
                                     display: 'block',
                                     textAlign: 'center'
@@ -9455,7 +9236,7 @@ N2R('$', function ($) {
                         }
                     });
 
-                timeboxparent.on('mousewheel', function (event) {
+                timeboxparent.on('wheel', function (event) {
                     var top = Math.abs(parseInt(timebox.css('marginTop'), 10));
 
                     top = top - (event.deltaY * 20);
@@ -10384,7 +10165,7 @@ N2R('$', function ($) {
 
 
             datepicker
-                .on('mousewheel.xdsoft', function (event) {
+                .on('wheel.xdsoft', function (event) {
                     if (!options.scrollMonth) {
                         return true;
                     }
@@ -10397,7 +10178,7 @@ N2R('$', function ($) {
                 });
 
             input
-                .on('mousewheel.xdsoft', function (event) {
+                .on('wheel.xdsoft', function (event) {
                     if (!options.scrollInput) {
                         return true;
                     }
@@ -11036,199 +10817,6 @@ N2R('$', function ($) {
         YearMonthPattern: "F, Y"
     };
 });
-N2R('$', function ($) {
-    "use strict";
-
-    var pluginName = "tinyscrollbar",
-        defaults = {
-            axis: 'y',    // Vertical or horizontal scrollbar? ( x || y ).
-            wheel: true,   // Enable or disable the mousewheel;
-            wheelSpeed: 40,     // How many pixels must the mouswheel scroll at a time.
-            wheelLock: true,   // Lock default scrolling window when there is no more content.
-            scrollInvert: false,  // Enable invert style scrolling
-            trackSize: false,  // Set the size of the scrollbar to auto or a fixed number.
-            thumbSize: false,  // Set the size of the thumb to auto or a fixed number
-        };
-
-    function Plugin($container, options) {
-        this.options = $.extend({}, defaults, options);
-        this._defaults = defaults;
-        this._name = pluginName;
-
-        var self = this, $viewport = $container.find(".viewport"), $overview = $container.find(".overview"),
-            $scrollbar = $container.find(".scrollbar"), $track = $scrollbar.find(".track"),
-            $thumb = $scrollbar.find(".thumb"), mousePosition = 0, isHorizontal = this.options.axis === 'x',
-            hasTouchEvents = false, wheelEvent = ("onwheel" in document || document.documentMode >= 9) ? "wheel" :
-            (document.onmousewheel !== undefined ? "mousewheel" : "DOMMouseScroll"),
-            sizeLabel = isHorizontal ? "width" : "height",
-            posiLabel = isHorizontal ? (window.n2const.isRTL() ? "right" : "left") : "top";
-
-        this.contentPosition = 0;
-        this.viewportSize = 0;
-        this.contentSize = 0;
-        this.contentRatio = 0;
-        this.trackSize = 0;
-        this.trackRatio = 0;
-        this.thumbSize = 0;
-        this.thumbPosition = 0;
-
-        function initialize() {
-            self.update();
-            setEvents();
-
-            return self;
-        }
-
-        this.update = function (scrollTo) {
-            var sizeLabelCap = sizeLabel.charAt(0).toUpperCase() + sizeLabel.slice(1).toLowerCase();
-            this.viewportSize = $viewport[0]['offset' + sizeLabelCap];
-            this.contentSize = $overview.width();
-            this.contentRatio = this.viewportSize / this.contentSize;
-            this.trackSize = $scrollbar.parent().width() || this.viewportSize;
-            this.thumbSize = Math.min(this.trackSize, Math.max(0, (this.options.thumbSize || (this.trackSize * this.contentRatio))));
-            this.trackRatio = this.options.thumbSize ? (this.contentSize - this.viewportSize) / (this.trackSize - this.thumbSize) : (this.contentSize / this.trackSize);
-            mousePosition = $track.offset().top;
-
-            $container.toggleClass("n2-scroll-disable", this.contentRatio >= 1);
-            $scrollbar.toggleClass("disable", this.contentRatio >= 1);
-            switch (scrollTo) {
-                case "bottom":
-                    this.contentPosition = this.contentSize - this.viewportSize;
-                    break;
-
-                case "relative":
-                    this.contentPosition = Math.min(Math.max(this.contentSize - this.viewportSize, 0), Math.max(0, this.contentPosition));
-                    break;
-
-                default:
-                    this.contentPosition = parseInt(scrollTo, 10) || 0;
-            }
-
-            setSize();
-
-            $container.trigger('scrollUpdate');
-
-            return self;
-        };
-
-        function setSize() {
-            $thumb.css(posiLabel, self.contentPosition / self.trackRatio);
-            $overview.css(posiLabel, -self.contentPosition);
-            $scrollbar.css(sizeLabel, self.trackSize);
-            $track.css(sizeLabel, self.trackSize);
-            $thumb.css(sizeLabel, self.thumbSize);
-        }
-
-        function setEvents() {
-            if (hasTouchEvents) {
-                $viewport[0].ontouchstart = function (event) {
-                    if (1 === event.touches.length) {
-                        event.stopPropagation();
-
-                        start(event.touches[0]);
-                    }
-                };
-            }
-            else {
-                $thumb.bind("mousedown", start);
-                $track.bind("mousedown", drag);
-            }
-
-            $(window).resize(function () {
-                self.update("relative");
-            });
-
-            if (self.options.wheel) {
-                $container.on('mousewheel', wheel);
-            }
-        }
-
-        function start(event) {
-            $("body").addClass("noSelect");
-
-            mousePosition = isHorizontal ? event.pageX : event.pageY;
-            self.thumbPosition = parseInt($thumb.css(posiLabel), 10) || 0;
-
-            if (hasTouchEvents) {
-                document.ontouchmove = function (event) {
-                    event.preventDefault();
-                    drag(event.touches[0]);
-                };
-                document.ontouchend = end;
-            }
-            else {
-                $(document).bind("mousemove", drag);
-                $(document).bind("mouseup", end);
-                $thumb.bind("mouseup", end);
-            }
-        }
-
-        function wheel(event) {
-            if (self.contentRatio < 1) {
-                var evntObj = event,
-                    deltaDir = "delta" + self.options.axis.toUpperCase(),
-                    wheelSpeedDelta = evntObj.deltaY;
-
-                self.contentPosition -= wheelSpeedDelta * self.options.wheelSpeed;
-                self.contentPosition = Math.min((self.contentSize - self.viewportSize), Math.max(0, self.contentPosition));
-
-                $container.trigger("move");
-
-                $thumb.css(posiLabel, self.contentPosition / self.trackRatio);
-                $overview.css(posiLabel, -self.contentPosition);
-
-                if (self.options.wheelLock || (self.contentPosition !== (self.contentSize - self.viewportSize) && self.contentPosition !== 0)) {
-                    evntObj = $.event.fix(evntObj);
-                    evntObj.preventDefault();
-                }
-            }
-        }
-
-        this.wheel = wheel;
-
-        function drag(event) {
-            if (self.contentRatio < 1) {
-                var mousePositionNew = isHorizontal ? event.pageX : event.pageY,
-                    thumbPositionDelta = mousePositionNew - mousePosition;
-
-                if (self.options.scrollInvert && hasTouchEvents) {
-                    thumbPositionDelta = mousePosition - mousePositionNew;
-                }
-
-                if (window.n2const.isRTL()) {
-                    thumbPositionDelta *= -1;
-                }
-
-                var thumbPositionNew = Math.min((self.trackSize - self.thumbSize), Math.max(0, self.thumbPosition + thumbPositionDelta));
-                self.contentPosition = thumbPositionNew * self.trackRatio;
-
-                $container.trigger("move");
-
-                $thumb.css(posiLabel, thumbPositionNew);
-                $overview.css(posiLabel, -self.contentPosition);
-            }
-        }
-
-        function end() {
-            $("body").removeClass("noSelect");
-            $(document).unbind("mousemove", drag);
-            $(document).unbind("mouseup", end);
-            $thumb.unbind("mouseup", end);
-            document.ontouchmove = document.ontouchend = null;
-        }
-
-        return initialize();
-    }
-
-    $.fn[pluginName] = function (options) {
-        return this.each(function () {
-            if (!$.data(this, "plugin_" + pluginName)) {
-                $.data(this, "plugin_" + pluginName, new Plugin($(this), options));
-            }
-        });
-    };
-});
-
 /**
  * jquery.unique-element-id.js
  *
@@ -11412,7 +11000,7 @@ N2D('nUIAutocomplete', ['nUIWidgetBase'], function ($, undefined) {
                 })
                 .on({
                     mousedown: $.proxy(N2Classes.WindowManager.setMouseDownArea, null, 'nUIAutocomplete'),
-                    'DOMMouseScroll mousewheel': function (e) {
+                    'wheel': function (e) {
                         e.stopPropagation();
                     }
                 });
@@ -11445,6 +11033,166 @@ N2D('nUIAutocomplete', ['nUIWidgetBase'], function ($, undefined) {
     N2Classes.nUIWidgetBase.register('nUIAutocomplete');
 
     return nUIAutocomplete;
+});
+N2D('nUIDraggableBar', ['nUIMouse'], function ($, undefined) {
+    "use strict";
+
+    /**
+     * @memberOf N2Classes
+     *
+     * @param element
+     * @param options
+     */
+    function nUIDraggableBar(element, options) {
+        this.element = $(element);
+
+        this.widgetName = this.widgetName || 'nUIDraggable';
+        this.widgetEventPrefix = "drag";
+
+        this.options = $.extend({
+            // Callbacks
+            drag: null,
+            start: null,
+            stop: null
+        }, this.options, options);
+
+        N2Classes.nUIMouse.prototype.constructor.apply(this, arguments);
+
+        this._mouseInit();
+    }
+
+    nUIDraggableBar.prototype = Object.create(N2Classes.nUIMouse.prototype);
+    nUIDraggableBar.prototype.constructor = nUIDraggableBar;
+
+    nUIDraggableBar.prototype._mouseStart = function (event) {
+
+        this.currentData = this.originalData = {
+            margin: parseInt(this.element.css(n2const.rtl.marginLeft))
+        };
+        this.originalMousePosition = {left: event.pageX};
+
+        this.element.addClass("nui-draggable-dragging");
+
+        this._trigger("start", event, this.ui());
+
+        this._mouseDrag(event);
+        return true;
+    };
+
+    nUIDraggableBar.prototype._mouseDrag = function (event) {
+        var dx = (event.pageX - this.originalMousePosition.left) || 0;
+        this.currentData = {};
+
+        if (!n2const.rtl.isRtl) {
+            this.currentData.margin = Math.max(0, this.originalData.margin + dx);
+        } else {
+            this.currentData.margin = Math.max(0, this.originalData.margin - dx);
+        }
+
+        this._trigger("drag", event, this.ui());
+
+        this.element.css(n2const.rtl.marginLeft, this.currentData.margin);
+
+        return true;
+    };
+
+
+    nUIDraggableBar.prototype._mouseStop = function (event) {
+
+        this._trigger("stop", event, this.ui());
+
+        return true;
+    };
+
+    nUIDraggableBar.prototype.ui = function () {
+        return {
+            currentData: this.currentData
+        };
+    };
+
+    N2Classes.nUIWidgetBase.register('nUIDraggableBar');
+
+    return nUIDraggableBar;
+});
+N2D('nUIDraggableDelay', ['nUIMouse'], function ($, undefined) {
+    "use strict";
+
+    /**
+     * @memberOf N2Classes
+     *
+     * @param element
+     * @param options
+     */
+    function nUIDraggableDelay(element, options) {
+        this.element = $(element);
+
+        this.widgetName = this.widgetName || 'nUIDraggable';
+        this.widgetEventPrefix = "drag";
+
+        this.options = $.extend({
+            // Callbacks
+            drag: null,
+            start: null,
+            stop: null
+        }, this.options, options);
+
+        N2Classes.nUIMouse.prototype.constructor.apply(this, arguments);
+
+        this._mouseInit();
+    }
+
+    nUIDraggableDelay.prototype = Object.create(N2Classes.nUIMouse.prototype);
+    nUIDraggableDelay.prototype.constructor = nUIDraggableDelay;
+
+    nUIDraggableDelay.prototype._mouseStart = function (event) {
+
+        this.currentData = this.originalData = {
+            width: parseInt(this.element.width())
+        };
+        this.originalMousePosition = {left: event.pageX};
+
+        this.element.addClass("nui-draggable-dragging");
+
+        this._trigger("start", event, this.ui());
+
+        this._mouseDrag(event);
+        return true;
+    };
+
+    nUIDraggableDelay.prototype._mouseDrag = function (event) {
+        var dx = (event.pageX - this.originalMousePosition.left) || 0;
+        this.currentData = {};
+
+        if (!n2const.rtl.isRtl) {
+            this.currentData.width = Math.max(0, this.originalData.width + dx);
+        } else {
+            this.currentData.width = Math.max(0, this.originalData.width - dx);
+        }
+
+        this._trigger("drag", event, this.ui());
+
+        this.element.width(this.currentData.width);
+
+        return true;
+    };
+
+
+    nUIDraggableDelay.prototype._mouseStop = function (event) {
+
+        this._trigger("stop", event, this.ui());
+
+        return true;
+    };
+
+    nUIDraggableDelay.prototype.ui = function () {
+        return {
+            currentData: this.currentData
+        };
+    };
+
+    N2Classes.nUIWidgetBase.register('nUIDraggableDelay');
+
+    return nUIDraggableDelay;
 });
 N2D('nUIDraggable', ['nUIMouse'], function ($, undefined) {
     "use strict";
@@ -13581,6 +13329,92 @@ N2D('nUIFileUpload', ["nUIWidgetBase"], function ($, undefined) {
 
     return nUIFileUpload;
 });
+N2D('HorizontalScrollBar', function ($) {
+    "use strict";
+
+    /**
+     * @memberOf N2Classes
+     *
+     * @param $container
+     * @constructor
+     */
+    function HorizontalScrollBar($container) {
+        this.$container = $container;
+        this.$document = $(document);
+
+        this.currentLeft = 0;
+
+        this.$viewport = $container.find('.n2-scroll-viewport');
+        this.$content = $container.find('.n2-scroll-content');
+
+        this.$track = $container.find('.n2-scroll-track');
+        this.$grip = $container.find('.n2-scroll-grip');
+
+        this.side = window.n2const.isRTL() ? "right" : "left";
+        this.modifier = window.n2const.isRTL() ? -1 : 1;
+
+        this.$grip.on('mousedown.scrollbar', $.proxy(this.mouseDown, this));
+
+        this.update();
+
+        $(window).resize($.proxy(this.update, this));
+    }
+
+    HorizontalScrollBar.prototype.update = function () {
+        this.viewportWidth = this.$viewport.width();
+        this.contentWidth = this.$content.outerWidth();
+        this.trackWidth = this.$track.width();
+
+        this.ratio = Math.min(1, this.viewportWidth / this.contentWidth);
+
+        this.gripWidth = Math.max(20, Math.floor(this.ratio * this.trackWidth));
+
+        this.$grip.width(this.gripWidth);
+
+        this.setLeft(this.currentLeft);
+
+
+        this.$container.toggleClass("n2-scroll-disable", this.ratio === 1);
+    };
+
+    HorizontalScrollBar.prototype.setLeft = function (left) {
+        left = Math.max(0, Math.min(this.trackWidth - this.gripWidth, left));
+
+        this.$grip.css(this.side, left);
+        this.$content.css(this.side, -1 * Math.ceil(left / this.ratio));
+
+        this.currentLeft = left;
+    };
+
+    HorizontalScrollBar.prototype.mouseDown = function (e) {
+        this.context = {
+            pageX: e.pageX,
+            left: this.currentLeft
+        };
+        this.$document.on({
+            'mousemove.scrollbar': $.proxy(this.mouseMove, this),
+            'mouseup.scrollbar': $.proxy(this.mouseUp, this)
+        });
+    };
+
+    HorizontalScrollBar.prototype.mouseMove = function (e) {
+
+        this.setLeft(this.context.left + (e.pageX - this.context.pageX) * this.modifier);
+    };
+
+    HorizontalScrollBar.prototype.mouseUp = function (e) {
+
+        this.mouseMove(e);
+
+        /**
+         * Cleanup when the interaction ends.
+         */
+        this.$document.off('.scrollbar');
+        delete this.context;
+    };
+
+    return HorizontalScrollBar;
+});
 /*
  * jQuery Iframe Transport Plugin 1.8.3
  * https://github.com/blueimp/jQuery-File-Upload
@@ -14091,13 +13925,7 @@ N2D('nUINormalSizing', ['nUIMouse'], function ($, undefined) {
         }
 
         this._handles = this.element.find("> .nui-normal-sizing-handle");
-        this._handles.css({
-            '-ms-user-select': 'none',
-            '-moz-user-select': '-moz-none',
-            '-khtml-user-select': 'none',
-            '-webkit-user-select': 'none',
-            'user-select': 'none'
-        });
+        this._handles.addClass('n2-unselectable');
     };
 
     nUINormalSizing.prototype._removeHandles = function () {
@@ -14242,6 +14070,150 @@ N2D('nUINormalSizing', ['nUIMouse'], function ($, undefined) {
 
     return nUINormalSizing;
 });
+N2D('nUIResizableBar', ['nUIMouse'], function ($, undefined) {
+    "use strict";
+
+    /**
+     * @memberOf N2Classes
+     *
+     * @param element
+     * @param options
+     */
+    function nUIResizableBar(element, options) {
+        this.element = $(element);
+
+        this.widgetName = this.widgetName || 'nUIResizable';
+        this.widgetEventPrefix = "resize";
+
+        this.options = $.extend({
+            zIndex: 90,
+
+            // Callbacks
+            resize: null,
+            start: null,
+            stop: null
+        }, this.options, options);
+
+        N2Classes.nUIMouse.prototype.constructor.apply(this, arguments);
+
+        this.create();
+    }
+
+    nUIResizableBar.prototype = Object.create(N2Classes.nUIMouse.prototype);
+    nUIResizableBar.prototype.constructor = nUIResizableBar;
+
+    nUIResizableBar.prototype.create = function () {
+
+        var o = this.options;
+        this.element.addClass("nui-resizable");
+
+        this._setupHandles();
+
+        this._mouseInit();
+
+        this._trigger('create', null, {});
+    };
+
+    nUIResizableBar.prototype._setupHandles = function () {
+        var o = this.options, handle, i, n, hname, axis, that = this;
+
+        this._handles = $();
+
+        n = ["e", "w"];
+        this.handles = {};
+
+        for (i = 0; i < n.length; i++) {
+
+            handle = $.trim(n[i]);
+            hname = "nui-resizable-" + handle;
+            axis = $("<div>")
+                .addClass("nui-resizable-handle " + hname)
+                .css({zIndex: o.zIndex});
+
+            this.handles[handle] = ".nui-resizable-" + handle;
+            this.element.append(axis);
+            axis.on({
+                "mousedown": $.proxy(function (handleName, e) {
+                    this.currentHandle = handleName;
+                    this._mouseDown(e);
+                }, this, handle)
+            });
+
+            this._handles = this._handles.add(axis);
+        }
+
+        this._handles.css({
+            '-ms-user-select': 'none',
+            '-moz-user-select': '-moz-none',
+            '-khtml-user-select': 'none',
+            '-webkit-user-select': 'none',
+            'user-select': 'none'
+        });
+    };
+
+    nUIResizableBar.prototype._mouseStart = function (event) {
+
+        this.currentData = this.originalData = {
+            margin: parseInt(this.element.css(n2const.rtl.marginLeft)),
+            width: parseInt(this.element.width())
+        };
+        this.originalMousePosition = {left: event.pageX};
+
+        var cursor = $(".nui-resizable-" + this.axis).css("cursor");
+        $("body").css("cursor", cursor === "auto" ? this.axis + "-resize" : cursor);
+
+        this.element.addClass("nui-resizable-resizing");
+        this._trigger("start", event, this.ui());
+        return true;
+    };
+
+    nUIResizableBar.prototype._mouseDrag = function (event) {
+        var dx = (event.pageX - this.originalMousePosition.left) || 0;
+        this.currentData = {};
+
+        if (!n2const.rtl.isRtl) {
+            if (this.currentHandle === 'e') {
+                this.currentData.margin = this.originalData.margin;
+                this.currentData.width = Math.max(0, this.originalData.width + dx);
+            } else if (this.currentHandle === 'w') {
+                this.currentData.margin = Math.max(0, this.originalData.margin + dx);
+                this.currentData.width = Math.max(0, this.originalData.width - dx);
+            }
+        } else {
+            if (this.currentHandle === 'e') {
+                this.currentData.margin = Math.max(0, this.originalData.margin - dx);
+                this.currentData.width = Math.max(0, this.originalData.width + dx);
+            } else if (this.currentHandle === 'w') {
+                this.currentData.margin = this.originalData.margin;
+                this.currentData.width = Math.max(0, this.originalData.width - dx);
+            }
+        }
+
+        this._trigger("resize", event, this.ui());
+
+        this.element.css(n2const.rtl.marginLeft, this.currentData.margin);
+        this.element.css('width', this.currentData.width);
+    };
+
+    nUIResizableBar.prototype._mouseStop = function (event) {
+
+        $("body").css("cursor", "auto");
+
+        this.element.removeClass("nui-resizable-resizing");
+
+        this._trigger("stop", event, this.ui());
+    };
+
+    nUIResizableBar.prototype.ui = function () {
+        return {
+            currentData: this.currentData
+        };
+    };
+
+    N2Classes.nUIWidgetBase.register('nUIResizableBar');
+
+    return nUIResizableBar;
+});
 N2D('nUIResizable', ['nUIMouse'], function ($, undefined) {
     "use strict";
 
@@ -14300,7 +14272,7 @@ N2D('nUIResizable', ['nUIMouse'], function ($, undefined) {
             return false;
         }
 
-        var scroll = ( a && a === "left" ) ? "scrollLeft" : "scrollTop",
+        var scroll = (a && a === "left") ? "scrollLeft" : "scrollTop",
             has = false;
 
         if (el[scroll] > 0) {
@@ -14311,7 +14283,7 @@ N2D('nUIResizable', ['nUIMouse'], function ($, undefined) {
         // if the element doesn't have the scroll set, see if it's possible to
         // set the scroll
         el[scroll] = 1;
-        has = ( el[scroll] > 0 );
+        has = (el[scroll] > 0);
         el[scroll] = 0;
         return has;
     };
@@ -14336,7 +14308,7 @@ N2D('nUIResizable', ['nUIMouse'], function ($, undefined) {
     nUIResizable.prototype._setupHandles = function () {
         var o = this.options, handle, i, n, hname, axis, that = this;
         this.handles = o.handles ||
-            ( !$(".nui-resizable-handle", this.element).length ?
+            (!$(".nui-resizable-handle", this.element).length ?
                 "e,s,se" : {
                     n: ".nui-resizable-n",
                     e: ".nui-resizable-e",
@@ -14346,7 +14318,7 @@ N2D('nUIResizable', ['nUIMouse'], function ($, undefined) {
                     sw: ".nui-resizable-sw",
                     ne: ".nui-resizable-ne",
                     nw: ".nui-resizable-nw"
-                } );
+                });
 
         this._handles = $();
         if (this.handles.constructor === String) {
@@ -14394,13 +14366,7 @@ N2D('nUIResizable', ['nUIMouse'], function ($, undefined) {
         this._renderAxis(this.element);
 
         this._handles = this._handles.add(this.element.find(".nui-resizable-handle"));
-        this._handles.css({
-            '-ms-user-select': 'none',
-            '-moz-user-select': '-moz-none',
-            '-khtml-user-select': 'none',
-            '-webkit-user-select': 'none',
-            'user-select': 'none'
-        });
+        this._handles.addClass('n2-unselectable');
 
         this._handles.on("mouseover", function () {
             if (!that.resizing) {
@@ -14460,20 +14426,20 @@ N2D('nUIResizable', ['nUIMouse'], function ($, undefined) {
         this.position = {left: curleft, top: curtop};
 
         this.size = this._helper ? {
-                width: this.helper.width(),
-                height: this.helper.height()
-            } : {
-                width: el.width(),
-                height: el.height()
-            };
+            width: this.helper.width(),
+            height: this.helper.height()
+        } : {
+            width: el.width(),
+            height: el.height()
+        };
 
         this.originalSize = this._helper ? {
-                width: el.outerWidth(),
-                height: el.outerHeight()
-            } : {
-                width: el.width(),
-                height: el.height()
-            };
+            width: el.outerWidth(),
+            height: el.outerHeight()
+        } : {
+            width: el.width(),
+            height: el.height()
+        };
 
         this.sizeDiff = {
             width: el.outerWidth() - el.width(),
@@ -14496,8 +14462,8 @@ N2D('nUIResizable', ['nUIMouse'], function ($, undefined) {
         var data, props,
             smp = this.originalMousePosition,
             a = this.axis,
-            dx = ( event.pageX - smp.left ) || 0,
-            dy = ( event.pageY - smp.top ) || 0,
+            dx = (event.pageX - smp.left) || 0,
+            dy = (event.pageY - smp.top) || 0,
             trigger = this._change[a];
 
         this._updatePrevProperties();
@@ -14538,10 +14504,10 @@ N2D('nUIResizable', ['nUIMouse'], function ($, undefined) {
                 width: that.helper.width(),
                 height: that.helper.height()
             };
-            left = ( parseFloat(that.element.css("left")) +
-                ( that.position.left - that.originalPosition.left ) ) || null;
-            top = ( parseFloat(that.element.css("top")) +
-                ( that.position.top - that.originalPosition.top ) ) || null;
+            left = (parseFloat(that.element.css("left")) +
+                (that.position.left - that.originalPosition.left)) || null;
+            top = (parseFloat(that.element.css("top")) +
+                (that.position.top - that.originalPosition.top)) || null;
 
             this.element.css($.extend(s, {top: top, left: left}));
 
@@ -14631,10 +14597,10 @@ N2D('nUIResizable', ['nUIMouse'], function ($, undefined) {
 
         var o = this._vBoundaries,
             a = this.axis,
-            ismaxw = this._isNumber(data.width) && o.maxWidth && ( o.maxWidth < data.width ),
-            ismaxh = this._isNumber(data.height) && o.maxHeight && ( o.maxHeight < data.height ),
-            isminw = this._isNumber(data.width) && o.minWidth && ( o.minWidth > data.width ),
-            isminh = this._isNumber(data.height) && o.minHeight && ( o.minHeight > data.height ),
+            ismaxw = this._isNumber(data.width) && o.maxWidth && (o.maxWidth < data.width),
+            ismaxh = this._isNumber(data.height) && o.maxHeight && (o.maxHeight < data.height),
+            isminw = this._isNumber(data.width) && o.minWidth && (o.minWidth > data.width),
+            isminh = this._isNumber(data.height) && o.minHeight && (o.minHeight > data.height),
             dw = this.originalPosition.left + this.originalSize.width,
             dh = this.originalPosition.top + this.originalSize.height,
             cw = /sw|nw|w/.test(a), ch = /nw|ne|n/.test(a);
@@ -14682,7 +14648,7 @@ N2D('nUIResizable', ['nUIMouse'], function ($, undefined) {
         if (this._helper) {
 
             this.helper = this.helper || $("<div style='overflow:hidden;'></div>")
-                    .addClass(this._helper);
+                .addClass(this._helper);
             this.helper.css({
                 width: this.element.outerWidth(),
                 height: this.element.outerHeight(),
@@ -14693,14 +14659,8 @@ N2D('nUIResizable', ['nUIMouse'], function ($, undefined) {
             });
 
             this.helper
-                .appendTo("body")
-                .css({
-                    '-ms-user-select': 'none',
-                    '-moz-user-select': '-moz-none',
-                    '-khtml-user-select': 'none',
-                    '-webkit-user-select': 'none',
-                    'user-select': 'none'
-                });
+                .addClass('n2-unselectable')
+                .appendTo("body");
 
         } else {
             this.helper = this.element;
@@ -14743,7 +14703,7 @@ N2D('nUIResizable', ['nUIMouse'], function ($, undefined) {
 
     nUIResizable.prototype._propagate = function (n, event) {
         this.callPlugin(n, [event, this.ui()]);
-        ( n !== "resize" && this._trigger(n, event, this.ui()) );
+        (n !== "resize" && this._trigger(n, event, this.ui()));
     };
 
     nUIResizable.prototype.ui = function () {
@@ -14827,12 +14787,15 @@ N2D('nUIResizable', ['nUIMouse'], function ($, undefined) {
             function setGridV(left) {
                 inst.gridV.css({left: Math.min(left, container.width - 1), display: "block"});
             };
+
             function setGridV2(left) {
                 inst.gridV2.css({left: Math.min(left, container.width - 1), display: "block"});
             };
+
             function setGridH(top) {
                 inst.gridH.css({top: Math.min(top, container.height - 1), display: "block"});
             };
+
             function setGridH2(top) {
                 inst.gridH2.css({top: Math.min(top, container.height - 1), display: "block"});
             };
@@ -15230,7 +15193,6 @@ N2D('nUISortable', ['nUIMouse'], function ($, undefined) {
      *
      * @constructor
      * @augments nUIMouse
-     * @this nUISortable
      */
     function nUISortable(element, options) {
         this.element = $(element);
@@ -15240,6 +15202,7 @@ N2D('nUISortable', ['nUIMouse'], function ($, undefined) {
 
         this.options = $.extend({
             items: '> *',
+            handle: '',
             placeholder: false,
             helper: 'original',
             forcePlaceholderSize: false,
@@ -15268,9 +15231,17 @@ N2D('nUISortable', ['nUIMouse'], function ($, undefined) {
         }
 
         var currentItem = null,
-            $target = $(e.target),
-            items = this.element.find(this.options.items);
+            $target = $(e.target);
 
+        if (this.options.handle !== '') {
+            var handles = this.element.find(this.options.items + ' ' + this.options.handle);
+            if (handles.index($target) === -1 && !handles.has($target).length) {
+                //Item not dragged by the handle
+                return false;
+            }
+        }
+
+        var items = this.element.find(this.options.items);
         if (items.index($target) !== -1) {
             currentItem = $target;
         } else {
@@ -15288,26 +15259,30 @@ N2D('nUISortable', ['nUIMouse'], function ($, undefined) {
 
     nUISortable.prototype._mouseStart = function (e) {
 
-        this.originalPageX = e.pageX;
-        this.originalPageY = e.pageY;
+        this._trigger('beforestart', e, {
+            currentItem: this.currentItem
+        });
 
-        this._cacheItems();
-
-        this._cacheMargins();
-
-        this.offset = this.currentItem.offset();
-        this.offset = {
-            top: this.offset.top - this.margins.top,
-            left: this.offset.left - this.margins.left
+        this.context = {
+            e: e,
+            original: {
+                pageX: e.pageX,
+                pageY: e.pageY,
+                clientX: e.clientX,
+                clientY: e.clientY,
+                elementBCR: this.element[0].getBoundingClientRect(),
+                currentItemBCR: this.currentItem[0].getBoundingClientRect()
+            },
+            offsetShift: {
+                top: 0,
+                left: 0
+            },
+            scrollCB: $.proxy(this._mouseScroll, this)
         };
 
-        $.extend(this.offset, {
-            click: { //Where the click happened, relative to the element
-                left: e.pageX - this.offset.left,
-                top: e.pageY - this.offset.top
-            },
-            parent: this.element.offset()
-        });
+        this.element.addClass('n2-ui-sortable-in-progress');
+
+        this._cacheItems();
 
         this.placeholder = $('<div/>')
             .addClass(this.options.placeholder || this.currentItem[0].className);
@@ -15337,25 +15312,41 @@ N2D('nUISortable', ['nUIMouse'], function ($, undefined) {
         this.helper.addClass('n2-ui-sortable-helper')
             .css({
                 position: 'absolute',
-                zIndex: 1000,
-                left: this.offset.left - this.offset.parent.left,
-                top: this.offset.top - this.offset.parent.top
+                zIndex: 1000
             })
             .appendTo(this.element);
 
         this._trigger('start', e, this.ui());
 
+        /**
+         * Trigger mousemove event on scroll to update the helper position
+         */
+        window.addEventListener('scroll', this.context.scrollCB, {
+            capture: true,
+            passive: true
+        });
     };
 
     nUISortable.prototype._mouseDrag = function (e) {
-        var helperPosition = {};
+        this.context.e = e;
+
+        var elementBDR = this.element[0].getBoundingClientRect(),
+            helperPosition = {};
 
         if (!this.options.axis || this.options.axis === 'x') {
-            helperPosition.left = e.pageX - this.originalPageX + this.offset.left - this.offset.parent.left;
+
+            var modifierX = elementBDR.left + this.context.original.clientX - e.clientX;
+            this.context.offsetShift.left = e.pageX - this.context.original.pageX - this.context.original.elementBCR.left + modifierX;
+
+            helperPosition.left = this.context.original.currentItemBCR.left - modifierX;
         }
 
         if (!this.options.axis || this.options.axis === 'y') {
-            helperPosition.top = e.pageY - this.originalPageY + this.offset.top - this.offset.parent.top;
+
+            var modifierY = elementBDR.top + this.context.original.clientY - e.clientY;
+            this.context.offsetShift.top = e.pageY - this.context.original.pageY - this.context.original.elementBCR.top + modifierY;
+
+            helperPosition.top = this.context.original.currentItemBCR.top - modifierY;
         }
 
         this.helper.css(helperPosition);
@@ -15405,8 +15396,14 @@ N2D('nUISortable', ['nUIMouse'], function ($, undefined) {
     };
 
     nUISortable.prototype._mouseStop = function (e) {
+        this.context.e = e;
 
         this._trigger('beforestop', e, this.ui());
+
+        window.removeEventListener('scroll', this.context.scrollCB, {
+            capture: true,
+            passive: true
+        });
 
         this.placeholder.remove();
 
@@ -15436,6 +15433,8 @@ N2D('nUISortable', ['nUIMouse'], function ($, undefined) {
             this.currentItem.css('display', '');
         }
 
+        this.element.removeClass('n2-ui-sortable-in-progress');
+
         if (closestData[1] === 'over') {
             this._trigger('drop', e, this.ui());
             this._trigger('out', e, this.ui());
@@ -15449,8 +15448,8 @@ N2D('nUISortable', ['nUIMouse'], function ($, undefined) {
 
     nUISortable.prototype._findClosestItem = function (e) {
         var distance = Number.MAX_VALUE,
-            left = e.pageX,
-            top = e.pageY,
+            left = e.pageX - this.context.offsetShift.left,
+            top = e.pageY - this.context.offsetShift.top,
             closestItem, closestItemSide, closestItemIndex;
 
         for (var i = 0; i < this.itemsData.length; i++) {
@@ -15531,11 +15530,12 @@ N2D('nUISortable', ['nUIMouse'], function ($, undefined) {
         }
     };
 
-    nUISortable.prototype._cacheMargins = function () {
-        this.margins = {
-            left: (parseInt(this.currentItem.css("marginLeft"), 10) || 0),
-            top: (parseInt(this.currentItem.css("marginTop"), 10) || 0)
-        };
+    nUISortable.prototype._mouseScroll = function () {
+        var e = this.context.e;
+        document.dispatchEvent(new MouseEvent('mousemove', {
+            clientX: e.clientX,
+            clientY: e.clientY
+        }));
     };
 
     nUISortable.prototype.ui = function () {
@@ -15721,15 +15721,9 @@ N2D('nUISpacing', ['nUIMouse'], function ($, undefined) {
             hname = "nui-spacing-" + handle;
             this.handles[handle] = axis = $("<div>")
                 .addClass("nui-spacing-handle nui-spacing-handle-" + o.mode + " nui-spacing-handle " + hname)
+                .addClass('n2-unselectable')
                 .on('mousedown', $.proxy(this._mouseDown, this))
-                .appendTo(this.element)
-                .css({
-                    '-ms-user-select': 'none',
-                    '-moz-user-select': '-moz-none',
-                    '-khtml-user-select': 'none',
-                    '-webkit-user-select': 'none',
-                    'user-select': 'none'
-                });
+                .appendTo(this.element);
 
             nextend.tooltip.addElement(this.handles[handle], N2Classes.StringHelper.capitalize(o.mode) + ' ' + o.side[handle]);
 
@@ -15952,7 +15946,7 @@ N2D('nUIWidgetBase', function ($, undefined) {
 
     /**
      * @abstract
-     * @returns {nUIWidgetBase}
+     * @returns {N2Classes.nUIWidgetBase}
      */
     nUIWidgetBase.prototype._destroy = function () {
         return this;

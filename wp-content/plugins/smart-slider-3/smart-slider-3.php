@@ -3,16 +3,22 @@
 Plugin Name: Smart Slider 3
 Plugin URI: https://smartslider3.com/
 Description: The perfect all-in-one responsive slider solution for WordPress.
-Version: 3.3.6
+Version: 3.3.18
 Author: Nextend
 Author URI: http://nextendweb.com
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
  */
 
+if (!defined('NEXTEND_SMARTSLIDER_3_URL_PATH')) {
+    define('NEXTEND_SMARTSLIDER_3_URL_PATH', 'smart-slider3');
+}
+
 if (!version_compare(PHP_VERSION, '5.4', '>=')) {
+    require_once dirname(__FILE__) . '/includes/fail.php';
     add_action('admin_notices', 'smartslider3_fail_php_version');
 } else if (!version_compare(get_bloginfo('version'), '4.6', '>=')) {
+    require_once dirname(__FILE__) . '/includes/fail.php';
     add_action('admin_notices', 'smartslider3_fail_wp_version');
 } else if (!class_exists('SmartSlider3', true)) {
 
@@ -26,12 +32,11 @@ if (!version_compare(PHP_VERSION, '5.4', '>=')) {
 
         define('NEXTEND_SMARTSLIDER_3__FILE__', __FILE__);
         define('NEXTEND_SMARTSLIDER_3', dirname(__FILE__) . DIRECTORY_SEPARATOR);
-        define('NEXTEND_SMARTSLIDER_3_URL_PATH', 'smart-slider-3');
         define('NEXTEND_SMARTSLIDER_3_BASENAME', plugin_basename(__FILE__));
 
         require_once dirname(NEXTEND_SMARTSLIDER_3__FILE__) . DIRECTORY_SEPARATOR . 'includes/smartslider3.php';
 
-        add_filter("plugin_action_links_" . plugin_basename(__FILE__), 'N2_SMARTSLIDER_3_UPGRADE_TO_PRO');
+        add_filter("plugin_action_links_" . NEXTEND_SMARTSLIDER_3_BASENAME, 'N2_SMARTSLIDER_3_UPGRADE_TO_PRO');
         function N2_SMARTSLIDER_3_UPGRADE_TO_PRO($links) {
 
             if (function_exists('is_plugin_active') && !is_plugin_active('nextend-smart-slider3-pro/nextend-smart-slider3-pro.php')) {
@@ -42,19 +47,5 @@ if (!version_compare(PHP_VERSION, '5.4', '>=')) {
         }
 
         N2Pluggable::addAction('animationFramework', 'N2AssetsPredefined::custom_animation_framework');
-    }
-}
-
-if (!function_exists('smartslider3_fail_php_version')) {
-    function smartslider3_fail_php_version() {
-        $html_message = sprintf('<div class="error">%s</div>', wpautop('Smart Slider 3 requires PHP version 5.4+, plugin is currently NOT RUNNING.'));
-        echo wp_kses_post($html_message);
-    }
-}
-
-if (!function_exists('smartslider3_fail_wp_version')) {
-    function smartslider3_fail_wp_version() {
-        $html_message = sprintf('<div class="error">%s</div>', wpautop('Smart Slider 3 requires WordPress version 4.6+. Because you are using an earlier version, the plugin is currently NOT RUNNING.'));
-        echo wp_kses_post($html_message);
     }
 }

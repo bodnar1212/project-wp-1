@@ -1,9 +1,13 @@
 N2D('SmartSliderWidgetThumbnailDefault', function ($, undefined) {
     "use strict";
 
-    var pointer = window.navigator.pointerEnabled || window.navigator.msPointerEnabled,
-        hadDirection = false,
-        preventMultipleTap = false;
+    var preventMultipleTap = false,
+        thumbnailTypes = {
+            videoDark: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">' +
+                '<circle cx="24" cy="24" r="24" fill="#000" opacity=".6"/>' +
+                '<path fill="#FFF" d="M19.8 32c-.124 0-.247-.028-.36-.08-.264-.116-.436-.375-.44-.664V16.744c.005-.29.176-.55.44-.666.273-.126.592-.1.84.07l10.4 7.257c.2.132.32.355.32.595s-.12.463-.32.595l-10.4 7.256c-.14.1-.31.15-.48.15z"/>' +
+                '</svg>'
+        };
 
     /**
      * @memberOf N2Classes
@@ -33,7 +37,6 @@ N2D('SmartSliderWidgetThumbnailDefault', function ($, undefined) {
         this.hidden = false;
         this.forceHidden = false;
         this.forceHiddenCB = null;
-        this.group = 2;
         this.itemPerPane = 1;
         this.currentI = 0;
         this.offset = 0;
@@ -64,13 +67,25 @@ N2D('SmartSliderWidgetThumbnailDefault', function ($, undefined) {
         this.bar = this.outerBar.find('.nextend-thumbnail-inner');
         this.scroller = this.bar.find('.nextend-thumbnail-scroller');
 
+        this.$groups = $();
+        for (var i = 0; i < this.group; i++) {
+            this.$groups = this.$groups.add($('<div class="nextend-thumbnail-scroller-group"></div>').appendTo(this.scroller));
+        }
+
         var event = 'universalclick';
         if (parameters.action === 'mouseenter') {
-            event = 'mouseenter';
+            event = 'universalenter';
         } else if (this.slider.hasTouch()) {
             event = 'n2click';
         }
-        this.dots = this.scroller.find('> div').on(event, $.proxy(this.onDotClick, this));
+
+        this.renderThumbnails();
+
+
+        this.dots = this.scroller.find('.nextend-thumbnail-scroller-group > div')
+            .on(event, $.proxy(this.onDotClick, this));
+
+
         this.images = this.dots.find('.n2-ss-thumb-image');
 
         if (!n2const.rtl.isRtl) {
@@ -128,14 +143,6 @@ N2D('SmartSliderWidgetThumbnailDefault', function ($, undefined) {
             }
         }
 
-        if (this.slider.isShuffled) {
-            for (var i = 0; this.slider.realSlides.length > i; i++) {
-                var slide = this.slider.realSlides[i];
-                this.dots.eq(slide.originalIndex).appendTo(this.scroller);
-            }
-            this.dots = this.scroller.find('> div');
-        }
-
         this.thumbnailDimension = {
             widthLocal: this.dots.width(),
             width: this.dots.outerWidth(true),
@@ -188,6 +195,57 @@ N2D('SmartSliderWidgetThumbnailDefault', function ($, undefined) {
             if (side) {
                 this.offset = parseFloat(this.outerBar.data('offset'));
                 this.slider.responsive.addStaticMargin(side, this);
+            }
+        }
+    };
+
+    SmartSliderWidgetThumbnailDefault.prototype.renderThumbnails = function () {
+        var itemPerGroup;
+        if (this.parameters.invertGroupDirection) {
+            itemPerGroup = Math.ceil(this.slider.realSlides.length / this.group);
+        }
+
+        for (var i = 0; i < this.slider.realSlides.length; i++) {
+            var slide = this.slider.realSlides[i],
+                $thumbnail = $('<div class="' + this.parameters.slideStyle + ' n2-ow" style="' + this.parameters.containerStyle + '"></div>');
+
+            if (this.parameters.invertGroupDirection) {
+                $thumbnail.appendTo(this.$groups.eq(Math.floor(i / itemPerGroup)));
+            } else {
+                $thumbnail.appendTo(this.$groups.eq(i % this.group));
+            }
+
+            $thumbnail.data('slide', slide);
+            slide.$thumbnail = $thumbnail;
+            if (this.parameters.thumbnail !== undefined) {
+                var thumbnailType = slide.getThumbnailType(),
+                    thumbnailSVG = thumbnailTypes[thumbnailType] !== undefined ? thumbnailTypes[thumbnailType] : '';
+
+                $('<div class="n2-ss-thumb-image n2-ow" style="width:' + this.parameters.thumbnail.width + 'px; height:' + this.parameters.thumbnail.height + 'px;' + this.parameters.thumbnail.code + '">' + thumbnailSVG + '</div>')
+                    .css('background-image', 'url(\'' + slide.getThumbnail() + '\')')
+                    .appendTo($thumbnail);
+            }
+
+            if (this.parameters.caption !== undefined) {
+                var $caption = $('<div class="' + this.parameters.caption.styleClass + 'n2-ss-caption n2-ow n2-caption-' + this.parameters.caption.placement + '" style="' + this.parameters.caption.style + '"></div>');
+                switch (this.parameters.caption.placement) {
+                    case 'before':
+                        $caption.prependTo($thumbnail);
+                        break;
+                    default:
+                        $caption.appendTo($thumbnail);
+                        break;
+                }
+                if (this.parameters.title !== undefined) {
+                    $caption.append('<div class="n2-ow ' + this.parameters.title.font + '">' + slide.getTitle() + '</div>');
+                }
+
+                if (this.parameters.description !== undefined) {
+                    var description = slide.getDescription();
+                    if (description) {
+                        $caption.append('<div class="n2-ow ' + this.parameters.description.font + '">' + description + '</div>');
+                    }
+                }
             }
         }
     };
@@ -250,7 +308,7 @@ N2D('SmartSliderWidgetThumbnailDefault', function ($, undefined) {
     var isFired = false;
     SmartSliderWidgetThumbnailDefault.prototype.onDotClick = function (e) {
         if (!isFired) {
-            this.slider.directionalChangeToReal(this.dots.index(e.currentTarget));
+            this.slider.directionalChangeToReal($(e.currentTarget).data('slide').index);
             isFired = true;
         }
         setTimeout($.proxy(function () {
@@ -267,11 +325,11 @@ N2D('SmartSliderWidgetThumbnailDefault', function ($, undefined) {
     };
 
     SmartSliderWidgetThumbnailDefault.prototype.activateDots = function (currentSlideIndex) {
-        this.dots.filter('.n2-active').removeClass('n2-active');
+        this.dots.removeClass('n2-active');
 
         var slides = this.slider.slides[currentSlideIndex].slides;
         for (var i = 0; slides.length > i; i++) {
-            this.dots.eq(slides[i].index).addClass('n2-active');
+            slides[i].$thumbnail.addClass('n2-active');
         }
     };
 
@@ -288,6 +346,10 @@ N2D('SmartSliderWidgetThumbnailDefault', function ($, undefined) {
     };
 
     SmartSliderWidgetThumbnailDefault.prototype.goToDot = function (i) {
+        if (this.tween && this.tween.progress() < 1) {
+            this.tween.pause();
+        }
+
         var variables = this[this.orientation],
             ratio = 1,
             barDimension = this.slider.dimensions['thumbnail' + variables.prop],
@@ -355,7 +417,7 @@ N2D('SmartSliderWidgetThumbnailDefault', function ($, undefined) {
             to[variables.sideProp] = min;
             this.next.removeClass('n2-active');
         }
-        NextendTween.to(this.scroller, 0.5, to);
+        this.tween = NextendTween.to(this.scroller, 0.5, to);
 
 
         this.currentI = i;
@@ -367,6 +429,10 @@ N2D('SmartSliderWidgetThumbnailDefault', function ($, undefined) {
         if (this.forceHidden) {
             return;
         }
+        if (this.tween && this.tween.progress() < 1) {
+            this.tween.pause();
+        }
+
         var variables = this[this.orientation];
         var barDimension = this.slider.dimensions['thumbnail' + variables.prop];
 
@@ -437,7 +503,7 @@ N2D('SmartSliderWidgetThumbnailDefault', function ($, undefined) {
                 to[variables.sideProp] = min;
                 this.next.removeClass('n2-active');
             }
-            NextendTween.to(this.scroller, 0.5, to);
+            this.tween = NextendTween.to(this.scroller, 0.5, to);
         }
 
 

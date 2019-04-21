@@ -8,6 +8,9 @@ class N2Filesystem extends N2FilesystemAbstract {
     public $paths = array();
 
     public function __construct() {
+
+        $this->paths[] = realpath(WP_PLUGIN_DIR);
+
         $this->_basepath    = realpath(WP_CONTENT_DIR);
         $this->_librarypath = str_replace($this->_basepath, '', N2LIBRARY);
 

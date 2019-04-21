@@ -83,122 +83,143 @@ class N2SSShortcodeInsert {
                     <?php
                     $router = N2Base::getApplication('smartslider')->router;
                     ?>
-                    <iframe style="border: 0;" src="<?php echo $router->createUrl(array('sliders/embed')); ?>"></iframe>
+                    <iframe style="border: 0;" src="about:blank"></iframe>
 				</div>
 			</div>
         <script type="text/javascript">
-				jQuery(document).ready(function ($) {
-                    var modal = $('#n2-ss-editor-modal'),
-                        inner = $('.n2-ss-editor-inner'),
-                        iframe = inner.find('iframe'),
-                        $window = $(window),
-                        callback = function () {
-                        },
-                        watchResize = function () {
+            jQuery(document).ready(function ($) {
+                var modal = $('#n2-ss-editor-modal'),
+                    inner = $('.n2-ss-editor-inner'),
+                    iframe = inner.find('iframe'),
+                    $window = $(window),
+                    callback = function () {
+                    },
+                    watchResize = function () {
+                        iframe.height(inner.height() - 59);
+                        $window.on('resize.ss', function () {
                             iframe.height(inner.height() - 59);
-                            $window.on('resize.ss', function () {
-                                iframe.height(inner.height() - 59);
-                            });
-                        },
-                        unWatchResize = function () {
-                            $window.off('resize.ss');
-                        },
-                        show = function () {
-                            modal.addClass('n2-active');
-                            watchResize();
-                        },
-                        hide = function () {
-                            unWatchResize();
-                            modal.removeClass('n2-active');
-                        };
-
-                    modal.on('click', function (e) {
-                        if (e.target == modal.get(0)) {
-                            hide();
-                        }
-                    });
-                    $('.n2-ss-editor-header-close').on('click', function (e) {
-                        e.preventDefault();
-                        hide();
-                    });
-
-                    var eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
-
-                    window[eventMethod](eventMethod == "attachEvent" ? "onmessage" : "message", function (e) {
-                        if (e.source == (iframe[0].contentWindow || iframe[0].contentDocument)) {
-                        	var message = e[e.message ? "message" : "data"];
-                        	try{
-								message = JSON.parse(message);
-								if(message.action && message.action === 'ss3embed') {
-									callback(message);
-								}
-                            } catch(ex) {
-
-                            }
-                            hide();
-                        }
-                    }, false);
-
-                    <?php
-                    if (intval(N2SmartSliderSettings::get('editor-icon', 1))) {
-                    ?>
-                    window.NextendSmartSliderWPTinyMCEModal = function (ed) {
-                        callback = function (data) {
-                        	var shortcode = false;
-                        	if(data.mode === 'id'){
-                        	    shortcode = '<div>[smartslider3 slider=' + data.value + ']</div>';
-							}else if(data.mode === 'alias'){
-								shortcode = '<div>[smartslider3 alias="' + data.value + '"]</div>';
-							}
-							if(shortcode) {
-								ed.execCommand('mceInsertContent', false, shortcode);
-							}
-                        };
-                        show();
-                    };
-
-                    if (typeof QTags !== 'undefined') {
-                        QTags.addButton('smart-slider-3', 'Smart Slider', function () {
-                            callback = function (data) {
-								var shortcode = false;
-								if(data.mode === 'id'){
-									shortcode = '<div>[smartslider3 slider=' + data.value + ']</div>';
-								}else if(data.mode === 'alias'){
-									shortcode = '<div>[smartslider3 alias="' + data.value + '"]</div>';
-								}
-								if(shortcode) {
-									QTags.insertContent("\n" + shortcode);
-								}
-                            };
-                            show();
                         });
-                    }
-                    <?php
-                    }
-                    ?>
-
-                    window.NextendSmartSliderSelectModal = function ($input) {
-                        callback = function (data) {
-
-							var idOrAlias = false;
-							if(data.mode === 'id'){
-								idOrAlias = data.value;
-							}else if(data.mode === 'alias'){
-								idOrAlias = data.value;
-							}
-
-							if(idOrAlias) {
-								if (typeof $input === 'function') {
-									$input = $input();
-								}
-								$input.val(idOrAlias).trigger('input').trigger('change');
-							}
-                        };
-                        show();
-                        return false;
+                    },
+                    unWatchResize = function () {
+                        $window.off('resize.ss');
+                    },
+                    show = function () {
+                        if (iframe.attr('src') === 'about:blank') {
+                            iframe.attr('src', <?php echo wp_json_encode($router->createUrl(array('sliders/embed'))); ?>);
+                        }
+                        modal.addClass('n2-active');
+                        watchResize();
+                    },
+                    hide = function () {
+                        unWatchResize();
+                        modal.removeClass('n2-active');
                     };
 
+                modal.on('click', function (e) {
+                    if (e.target == modal.get(0)) {
+                        hide();
+                    }
                 });
+                $('.n2-ss-editor-header-close').on('click', function (e) {
+                    e.preventDefault();
+                    hide();
+                });
+
+                var eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
+
+                window[eventMethod](eventMethod == "attachEvent" ? "onmessage" : "message", function (e) {
+                    if (e.source == (iframe[0].contentWindow || iframe[0].contentDocument)) {
+                        var message = e[e.message ? "message" : "data"];
+                        try {
+                            message = JSON.parse(message);
+                            if (message.action && message.action === 'ss3embed') {
+                                callback(message);
+                            }
+                        } catch (ex) {
+
+                        }
+                        hide();
+                    }
+                }, false);
+
+                <?php
+                if (intval(N2SmartSliderSettings::get('editor-icon', 1))) {
+                ?>
+                window.NextendSmartSliderWPTinyMCEModal = function (ed) {
+                    callback = function (data) {
+                        var shortcode = false;
+                        if (data.mode === 'id') {
+                            shortcode = '<div>[smartslider3 slider=' + data.value + ']</div>';
+                        } else if (data.mode === 'alias') {
+                            shortcode = '<div>[smartslider3 alias="' + data.value + '"]</div>';
+                        }
+                        if (shortcode) {
+                            ed.execCommand('mceInsertContent', false, shortcode);
+                        }
+                    };
+                    show();
+                };
+
+                if (typeof QTags !== 'undefined') {
+                    QTags.addButton('smart-slider-3', 'Smart Slider', function () {
+                        callback = function (data) {
+                            var shortcode = false;
+                            if (data.mode === 'id') {
+                                shortcode = '<div>[smartslider3 slider=' + data.value + ']</div>';
+                            } else if (data.mode === 'alias') {
+                                shortcode = '<div>[smartslider3 alias="' + data.value + '"]</div>';
+                            }
+                            if (shortcode) {
+                                QTags.insertContent("\n" + shortcode);
+                            }
+                        };
+                        show();
+                    });
+                }
+                <?php
+                }
+                ?>
+
+                window.NextendSmartSliderSelectModal = function ($input) {
+                    callback = function (data) {
+
+                        var idOrAlias = false;
+                        if (data.mode === 'id') {
+                            idOrAlias = data.value;
+                        } else if (data.mode === 'alias') {
+                            idOrAlias = data.value;
+                        }
+
+                        if (idOrAlias) {
+                            if (typeof $input === 'function') {
+                                $input = $input();
+                            }
+                            $input.val(idOrAlias).trigger('input').trigger('change');
+                        }
+                    };
+                    show();
+                    return false;
+                };
+                window.NextendSmartSliderSelectModalCallback = function (cb) {
+                    callback = function (data) {
+
+                        var idOrAlias = false;
+                        if (data.mode === 'id') {
+                            idOrAlias = data.value;
+                        } else if (data.mode === 'alias') {
+                            idOrAlias = data.value;
+                        }
+
+                        if (idOrAlias) {
+                            cb(idOrAlias);
+                        }
+                    };
+                    show();
+                    return false;
+
+                }
+
+            });
 			</script>
         <?php
     }

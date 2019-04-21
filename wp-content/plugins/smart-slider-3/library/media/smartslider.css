@@ -1,11 +1,15 @@
 
 .n2-in-fullscreen * {
-    -webkit-animation-name: initial;
     animation-name: initial;
 }
 
 .n2-in-fullscreen [data-uk-scrollspy*='uk-animation-']:not([data-uk-scrollspy*='target']) {
     opacity: 1;
+}
+
+.n2-section-smartslider {
+    position: relative;
+    width: 100%;
 }
 
 .n2-ss-align {
@@ -14,7 +18,7 @@
     overflow: hidden;
 }
 
-.n2-ss-align.n2-ss-slider-align-visible {
+.n2-ss-align.n2-ss-align-visible {
     overflow: visible;
 }
 
@@ -46,8 +50,14 @@
 .n2-ss-slider .n2-ow-all *,
 .n2-ss-slider .n2-ow-all *:before,
 .n2-ss-slider .n2-ow-all *:after {
-    -moz-box-sizing: content-box;
     box-sizing: content-box;
+}
+
+.n2-ss-slider .n2-ow:before,
+.n2-ss-slider .n2-ow:after,
+.n2-ss-slider .n2-ow-all :not(i):before,
+.n2-ss-slider .n2-ow-all :not(i):after {
+    display: none;
 }
 
 .n2-ss-slider a.n2-ow,
@@ -66,6 +76,12 @@
     outline: none !important;
     transition: none 0s;
     box-shadow: none;
+    text-decoration: none;
+}
+
+.n2-ss-slider .n2-ow-all b,
+.n2-ss-slider .n2-ow-all i {
+    color: inherit;
 }
 
 .n2-ss-slider h1.n2-ow,
@@ -104,8 +120,6 @@
 .n2-ss-slider .n2-ow-all img {
     width: auto;
     box-shadow: none;
-    -webkit-border-radius: 0;
-    -moz-border-radius: 0;
     border-radius: 0;
     background: transparent;
     background: none;
@@ -124,10 +138,11 @@
 .n2-ss-slider textarea.n2-ow,
 .n2-ss-slider input.n2-ow,
 .n2-ss-slider button.n2-ow {
-    -moz-transition: none 0s;
-    -webkit-transition: none 0s;
-    -o-transition: none 0s;
     transition: none 0s;
+}
+
+.n2-ss-slider p {
+    background-color: transparent;
 }
 
 .n2-ss-slider {
@@ -153,8 +168,6 @@
 .n2-ss-slider.n2-ss-load-fade {
     position: absolute;
     opacity: 0;
-    -webkit-transition: opacity 0.3s ease-in-out;
-    -moz-transition: opacity 0.3s ease-in-out;
     transition: opacity 0.3s ease-in-out;
 }
 
@@ -163,31 +176,15 @@
     position: relative;
 }
 
-.n2-ss-slider .unselectable {
+.n2-ss-slider .n2-unselectable {
     -moz-user-select: -moz-none;
-    -khtml-user-select: none;
     -webkit-user-select: none;
-
-    /*
-      Introduced in IE 10.
-      See http://ie.microsoft.com/testdrive/HTML5/msUserSelect/
-    */
     -ms-user-select: none;
     user-select: none;
 }
 
 .n2-ss-slider.n2notransition * {
-    -webkit-transition: none !important;
-    -moz-transition: none !important;
-    -o-transition: none !important;
-    transition: none !important;
-}
-
-.n2-ss-slider .n2noselftransition {
-    -webkit-transition: none !important;
-    -moz-transition: none !important;
-    -o-transition: none !important;
-    transition: none !important;
+    transition: none 0s !important;
 }
 
 .n2-ss-slider .n2-ss-slide {
@@ -218,15 +215,12 @@
     z-index: 10;
 }
 
-.n2-ss-slider .n2-ss-slide-background img {
-    max-width: none;
-    display: none;
-    width: 0;
-    height: 0;
-}
-
 .n2-ss-slider .n2-ss-slide-background .n2-ss-slide-background-color {
     z-index: 1;
+}
+
+.n2-ss-slider .n2-ss-slide-background .n2-ss-slide-background-color[data-overlay="1"] {
+    z-index: 7;
 }
 
 .n2-ss-slider .n2-ss-slide-background .n2-ss-slide-background-video {
@@ -237,14 +231,18 @@
     z-index: 5;
 }
 
+.n2-ss-slider .n2-ss-slide-background-image img {
+    max-width: none;
+    display: none;
+    width: 0;
+    height: 0;
+}
+
 .n2-ss-slider .n2-ss-slide-background-image {
     width: 100%;
     height: 100%;
     background-position: 50% 50%;
     background-repeat: no-repeat;
-    -webkit-box-sizing: content-box;
-    -moz-box-sizing: content-box;
-    -ms-box-sizing: content-box;
     box-sizing: content-box;
 }
 
@@ -394,9 +392,6 @@
     -webkit-perspective: 1000px;
     z-index: 12;
     font-size: 16px;
-    -webkit-transition: opacity 0.4s ease;
-    -moz-transition: opacity 0.4s ease;
-    -o-transition: opacity 0.4s ease;
     transition: opacity 0.4s ease;
     opacity: 1;
 }
@@ -494,7 +489,7 @@
     visibility: visible;
 }
 
-.n2-ss-shape-divider {
+.n2-ss-slider .n2-ss-shape-divider {
     position: absolute;
     left: 0;
     width: 100%;
@@ -503,45 +498,42 @@
     z-index: 13;
 }
 
-.n2-ss-shape-divider-inner {
+.n2-ss-slider .n2-ss-shape-divider-inner {
     height: 100%;
 }
 
-.n2-ss-shape-divider svg {
+.n2-ss-slider .n2-ss-shape-divider svg {
     display: block;
     height: 100%;
     width: 100%;
 }
 
-.n2-ss-shape-divider-top {
+.n2-ss-slider .n2-ss-shape-divider-top {
     top: 0;
 }
 
-.n2-ss-shape-divider-top.n2-ss-flip-horizontal {
-    -webkit-transform: scaleX(-1);
+.n2-ss-slider .n2-ss-shape-divider-top.n2-ss-flip-horizontal {
     transform: scaleX(-1);
 }
 
-.n2-ss-shape-divider-bottom {
+.n2-ss-slider .n2-ss-shape-divider-bottom {
     bottom: 0;
-    -webkit-transform: scaleY(-1);
     transform: scaleY(-1);
 }
 
-.n2-ss-shape-divider-bottom.n2-ss-flip-horizontal {
-    -webkit-transform: scale(-1);
+.n2-ss-slider .n2-ss-shape-divider-bottom.n2-ss-flip-horizontal {
     transform: scale(-1);
 }
 
-.n2-ss-shape-divider .n2-ss-divider-start {
+.n2-ss-slider .n2-ss-shape-divider .n2-ss-divider-start {
     visibility: hidden;
 }
 
-.n2-ss-shape-divider.n2-ss-divider-animate .n2-ss-divider-start {
+.n2-ss-slider .n2-ss-shape-divider.n2-ss-divider-animate .n2-ss-divider-start {
     visibility: visible;
 }
 
-.n2-ss-shape-divider.n2-ss-divider-animate .n2-ss-divider-end {
+.n2-ss-slider .n2-ss-shape-divider.n2-ss-divider-animate .n2-ss-divider-end {
     visibility: hidden;
 }
 
@@ -557,6 +549,17 @@
 
 .n2-ss-slider video.n2-ow {
     max-width: none;
+}
+
+.n2-ss-item-video-container {
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+}
+
+.n2-ss-item-video-container video {
+    width: 100%;
+    height: 100%;
 }
 
 .n2-ss-slider .n2-ss-item-iframe-wrapper {
@@ -612,8 +615,6 @@
 .n2-ss-slider .n2-input {
     height: auto;
     width: auto;
-    -webkit-box-sizing: border-box;
-    -moz-box-sizing: border-box;
     box-sizing: border-box;
     margin: 0;
     border: 0;
@@ -697,6 +698,13 @@
 
 .n2-ss-slider [data-frontend-fullwidth="0"][data-sstype="row"] > .n2-ss-layer-row[row-wrapped="0"] > .n2-ss-layer-row-inner > .n2-ss-layer {
     width: auto !important;
+    flex: 0 1 auto;
+}
+
+.n2-ss-slider[data-ie] [data-frontend-fullwidth="0"][data-sstype="row"] > .n2-ss-layer-row[row-wrapped="0"] > .n2-ss-layer-row-inner > .n2-ss-layer {
+    display: inline-block;
+    flex: none;
+    max-width: 100%;
 }
 
 .n2-ss-slider [data-frontend-fullwidth="0"][data-sstype="row"] > .n2-ss-layer-row[row-wrapped="0"] > .n2-ss-layer-row-inner {
@@ -708,8 +716,15 @@
     flex: 1 1 auto;
 }
 
-.n2-ss-slider .n2-ss-layer[data-sstype="row"].n2-ss-stretch-layer > .n2-ss-layer-mask {
+.n2-ss-slider .n2-ss-layer[data-sstype="row"].n2-ss-stretch-layer > .n2-ss-layer-mask,
+.n2-ss-slider .n2-ss-layer[data-sstype="row"].n2-ss-stretch-layer > .n2-ss-layer-parallax {
     display: flex;
+}
+
+.n2-ss-slider[data-ie] .n2-ss-layer[data-sstype="content"],
+.n2-ss-slider[data-ie] .n2-ss-layer-row,
+.n2-ss-slider[data-ie] .n2-ss-layer-col {
+    background-attachment: scroll !important;
 }
 
 .n2-ss-slider .n2-ss-layer-row {
@@ -773,8 +788,11 @@
     justify-content: flex-start;
     box-sizing: border-box;
     position: relative;
-    min-height: 100%;
     height: 40px;
+}
+
+.n2-ss-slider .n2-ss-slider-1 .n2-ss-layer-content {
+    min-height: 100%;
 }
 
 .n2-ss-slider .n2-ss-layer-content .n2-ss-layer-needsize {
@@ -840,7 +858,7 @@
     flex: 0 0 auto;
 }
 
-.n2-ss-slider .n2-ss-section-main-content-calc {
+.n2-ss-slider .n2-ss-section-main-content.n2-ss-section-main-content-calc {
     min-height: 0;
     height: auto;
 }
@@ -938,6 +956,40 @@
     margin-top: -24px;
 }
 
+.n2-ss-slider .n2-ss-animated-heading-wrapper,
+.n2-ss-slider .n2-ss-animated-heading-wrapper *,
+.n2-ss-slider .n2-ss-highlighted-heading-wrapper,
+.n2-ss-slider .n2-ss-highlighted-heading-wrapper * {
+    text-decoration: none !important;
+}
+
 .n2-clear {
     clear: both;
+}
+
+[data-force-hidden],
+[data-force-hidden] * {
+    visibility: hidden !important;
+}
+
+.n2-ss-reveal-clip {
+    pointer-events: none;
+    visibility: hidden;
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 1000000;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.n2-ss-reveal-clip > * {
+    position: absolute;
+    left: 0;
+    top: 0;
+    outline: 1px solid transparent;
+    width: 100%;
+    height: 100%;
+
 }

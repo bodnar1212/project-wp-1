@@ -86,8 +86,15 @@ N2D('SmartSliderWidgetAutoplayImage', function ($, undefined) {
     };
 
     SmartSliderWidgetAutoplayImage.prototype.switchState = function (e) {
+
         e.preventDefault();
-        e.stopImmediatePropagation();
+
+        /**
+         * Mark the event notify parents that the event already handled for Autoplay interaction
+         * @type {boolean}
+         */
+        e.ss3HandledAutoplay = true;
+
         if (!this.paused) {
             this.setPaused();
             this.slider.sliderElement.triggerHandler('autoplayExtraWait', 'autoplayButton');

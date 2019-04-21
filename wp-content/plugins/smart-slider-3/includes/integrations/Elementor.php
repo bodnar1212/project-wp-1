@@ -20,6 +20,8 @@ add_action('admin_action_elementor', function () {
     n2_elementor_force_iframe();
 }, -10000);
 
+add_action('wp_ajax_elementor_ajax', '\Elementor\n2_elementor_force_iframe', -1);
+
 add_action('wp_ajax_elementor_render_widget', '\Elementor\n2_elementor_force_iframe', -1);
 
 
@@ -73,16 +75,18 @@ class Nextend_Widget_SmartSlider extends \Elementor\Widget_Base {
             echo \N2SS3Shortcode::renderIframe($this->get_settings('smartsliderid'));
         } else {
             $sliderIDorAlias = $this->get_settings('smartsliderid');
-            if(is_numeric($sliderIDorAlias)) {
-	            echo do_shortcode( '[smartslider3 slider=' . $sliderIDorAlias . ']' );
-            }else{
-	            echo do_shortcode( '[smartslider3 alias="' . $sliderIDorAlias . '"]' );
+            if (is_numeric($sliderIDorAlias)) {
+                echo do_shortcode('[smartslider3 slider=' . $sliderIDorAlias . ']');
+            } else {
+                echo do_shortcode('[smartslider3 alias="' . $sliderIDorAlias . '"]');
             }
         }
     }
 
+    /**
+     * Must be declared as empty method to prevent issues with SEO plugins.
+     */
     public function render_plain_content() {
-        echo 'Smart Slider with ID: ' . $this->get_settings('smartsliderid');
     }
 
     protected function _content_template() {

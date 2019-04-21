@@ -41,7 +41,7 @@ class N2GeneratorPostsPostsByIDs extends N2GeneratorAbstract {
 
 
             $record['url']         = get_permalink();
-            $record['title']       = apply_filters('the_title', get_the_title());
+            $record['title']       = apply_filters('the_title', get_the_title(), $post->ID);
             $record['description'] = $record['content'] = get_the_content();
             $record['author_name'] = $record['author'] = get_the_author();
             $record['author_url']  = get_the_author_meta('url');
@@ -79,7 +79,7 @@ class N2GeneratorPostsPostsByIDs extends N2GeneratorAbstract {
 
             if (class_exists('acf')) {
                 $fields = get_fields($post->ID);
-                if (count($fields) && is_array($fields) && !empty($fields)) {
+                if (is_array($fields) && !empty($fields) && count($fields)) {
                     foreach ($fields AS $k => $v) {
                         $type = $this->getACFType($k, $post->ID);
                         $k    = str_replace('-', '', $k);
@@ -117,8 +117,14 @@ class N2GeneratorPostsPostsByIDs extends N2GeneratorAbstract {
                     }
                 }
             }
-
+            if(isset($record['primarytermcategory'])){
+                $primary = get_category($record['primarytermcategory']);
+                $record['primary_category_name'] = $primary->name;
+                $record['primary_category_link'] = get_category_link($primary->cat_ID);
+            }
             $record['excerpt'] = get_the_excerpt();
+
+			$record = apply_filters( 'smartslider3_posts_postsbyids_data', $record );
 
             $data[$i] = &$record;
             unset($record);

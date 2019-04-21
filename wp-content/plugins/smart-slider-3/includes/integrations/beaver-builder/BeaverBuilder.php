@@ -18,6 +18,16 @@ add_action('fl_ajax_before_save_settings', 'n2_fl_builder_force_iframe');
 add_action('fl_ajax_before_copy_module', 'n2_fl_builder_force_iframe');
 
 /**
+ * Fix for Beaver Builder 1.5
+ */
+add_action('fl_ajax_fl_builder_render_new_module_settings', function () {
+    remove_action('wp_print_scripts', 'N2WordpressAssetInjector::injectCSSComment');
+}, 0);
+add_action('fl_ajax_fl_builder_save', function(){
+    remove_action('wp_print_scripts', 'N2WordpressAssetInjector::injectCSSComment');
+}, 0);
+
+/**
  * Custom modules
  */
 function n2_fl_load_module_smart_slider() {
@@ -38,30 +48,30 @@ function n2_fl_smart_slider_field($name, $value, $field) {
 
     $choices = array();
     foreach ($slidersModel->getAll(0) AS $slider) {
-	    if ($slider['type'] == 'group') {
+        if ($slider['type'] == 'group') {
 
-		    $subChoices                = array();
-		    if(!empty($slider['alias'])){
-			    $subChoices[$slider['alias']] = n2_('Whole group') . ' - ' . $slider['title'] . ' #Alias: ' . $slider['alias'];
-		    }
-		    $subChoices[$slider['id']] = n2_('Whole group') . ' - ' . $slider['title'] . ' #' . $slider['id'];
-		    foreach ($slidersModel->getAll($slider['id']) AS $_slider) {
-			    if(!empty($_slider['alias'])){
-				    $subChoices[$_slider['alias']] = $_slider['title'] . ' #Alias: ' . $_slider['alias'];
-			    }
-			    $subChoices[$_slider['id']] = $_slider['title'] . ' #' . $_slider['id'];
-		    }
+            $subChoices = array();
+            if (!empty($slider['alias'])) {
+                $subChoices[$slider['alias']] = n2_('Whole group') . ' - ' . $slider['title'] . ' #Alias: ' . $slider['alias'];
+            }
+            $subChoices[$slider['id']] = n2_('Whole group') . ' - ' . $slider['title'] . ' #' . $slider['id'];
+            foreach ($slidersModel->getAll($slider['id']) AS $_slider) {
+                if (!empty($_slider['alias'])) {
+                    $subChoices[$_slider['alias']] = $_slider['title'] . ' #Alias: ' . $_slider['alias'];
+                }
+                $subChoices[$_slider['id']] = $_slider['title'] . ' #' . $_slider['id'];
+            }
 
-		    $choices[$slider['id']] = array(
-			    'label'   => $slider['title'] . ' #' . $slider['id'],
-			    'choices' => $subChoices
-		    );
-	    } else {
-		    if(!empty($slider['alias'])){
-			    $choices[$slider['alias']] = $slider['title'] . ' #Alias: ' . $slider['alias'];
-		    }
-		    $choices[$slider['id']] = $slider['title'] . ' #' . $slider['id'];
-	    }
+            $choices[$slider['id']] = array(
+                'label'   => $slider['title'] . ' #' . $slider['id'],
+                'choices' => $subChoices
+            );
+        } else {
+            if (!empty($slider['alias'])) {
+                $choices[$slider['alias']] = $slider['title'] . ' #Alias: ' . $slider['alias'];
+            }
+            $choices[$slider['id']] = $slider['title'] . ' #' . $slider['id'];
+        }
     }
     ?>
     <select name="<?php echo $name; ?>">

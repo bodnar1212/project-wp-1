@@ -17,8 +17,19 @@
     <?php
     if (defined('N2LIBRARY')) {
         if (class_exists('N2AssetsManager')) {
-            echo N2AssetsManager::getCSS();
-            echo N2AssetsManager::getJs();
+            $handlers = ob_list_handlers();
+            if (!in_array('N2WordpressAssetInjector::output_callback', $handlers)) {
+                echo N2AssetsManager::getCSS();
+                echo N2AssetsManager::getJs();
+            }
+        }
+    }
+
+    $externals = N2SmartSliderSettings::get('external-css-files');
+    if (!empty($externals)) {
+        $externals = explode("\n", $externals);
+        foreach ($externals AS $external) {
+            echo "<link rel='stylesheet' href='" . $external . "' type='text/css' media='all' />";
         }
     }
     ?>
@@ -63,8 +74,8 @@
                                 width: $('body').width(),
                                 height: $('body').height(),
                                 forceFull: responsive.parameters.forceFull,
-                                fullPage: responsive.parameters.type == 'fullpage',
-                                verticalOffsetSelectors: responsive.parameters.verticalOffsetSelectors
+                                fullPage: responsive.parameters.type === 'fullpage',
+                                focus: responsive.parameters.focus
                             }, "*");
                         };
                         if (typeof tmpChange !== 'undefined') {

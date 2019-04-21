@@ -46,28 +46,7 @@ class N2WP {
         n2_exit();
     }
 
-    public static function install($network_wide) {
-        global $wpdb;
-
-        if (is_multisite() && $network_wide) {
-            $tmpPrefix = $wpdb->prefix;
-            $blogs     = get_sites(array('network_id' => $wpdb->siteid, 'number' => null));
-            foreach ($blogs AS $blog) {
-                $wpdb->prefix = $wpdb->get_blog_prefix($blog->blog_id);
-
-                N2Base::getApplication("system")
-                      ->getApplicationType('backend')
-                      ->render(array(
-                          "controller" => "install",
-                          "action"     => "index",
-                          "useRequest" => false
-                      ), array(true));
-            }
-
-            $wpdb->prefix = $tmpPrefix;
-
-            return true;
-        }
+    public static function install() {
 
         N2Base::getApplication("system")
               ->getApplicationType('backend')
@@ -76,22 +55,6 @@ class N2WP {
                   "action"     => "index",
                   "useRequest" => false
               ), array(true));
-    }
-
-    public static function install_new_blog($blog_id) {
-        global $wpdb;
-        $tmpPrefix    = $wpdb->prefix;
-        $wpdb->prefix = $wpdb->get_blog_prefix($blog_id);
-
-        N2Base::getApplication("system")
-              ->getApplicationType('backend')
-              ->render(array(
-                  "controller" => "install",
-                  "action"     => "index",
-                  "useRequest" => false
-              ), array(true));
-
-        $wpdb->prefix = $tmpPrefix;
     }
 
     public static function delete_blog($blog_id, $drop) {

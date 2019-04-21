@@ -58,16 +58,27 @@ abstract class N2SmartSliderType {
     protected abstract function renderType($css);
 
     protected function getSliderClasses() {
-        return $this->slider->features->fadeOnLoad->getSliderClass();
+        $alias      = $this->slider->getAlias();
+        $fadeOnLoad = $this->slider->features->fadeOnLoad->getSliderClass();
+
+        return $alias . ' ' . $fadeOnLoad;
     }
 
     protected function openSliderElement() {
-        return N2Html::openTag('div', array(
+
+        $attributes = array(
                 'id'           => $this->slider->elementId,
                 'data-creator' => 'Smart Slider 3',
                 'class'        => 'n2-ss-slider n2-ow n2-has-hover n2notransition ' . $this->getSliderClasses(),
 
-            ) + $this->getFontSizeAttributes());
+            ) + $this->getFontSizeAttributes();
+
+        $alias = $this->slider->getAlias();
+        if (!empty($alias)) {
+            $attributes['data-alias'] = $alias;
+        }
+
+        return N2Html::openTag('div', $attributes);
     }
 
     private function getFontSizeAttributes() {

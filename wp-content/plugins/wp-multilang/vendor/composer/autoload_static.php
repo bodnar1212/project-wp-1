@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit9ae6f242f9c6793cf96494f7f4f3ca37
+class ComposerStaticInit10f68284d303303872430af9e5a79198
 {
     public static $prefixesPsr0 = array (
         'x' => 
@@ -29,6 +29,7 @@ class ComposerStaticInit9ae6f242f9c6793cf96494f7f4f3ca37
         'WPM\\Includes\\Admin\\WPM_Admin_Assets' => __DIR__ . '/../..' . '/includes/admin/class-wpm-admin-assets.php',
         'WPM\\Includes\\Admin\\WPM_Admin_Customizer' => __DIR__ . '/../..' . '/includes/admin/class-wpm-admin-customizer.php',
         'WPM\\Includes\\Admin\\WPM_Admin_Edit_Menus' => __DIR__ . '/../..' . '/includes/admin/class-wpm-admin-edit-menus.php',
+        'WPM\\Includes\\Admin\\WPM_Admin_Gutenberg' => __DIR__ . '/../..' . '/includes/admin/class-wpm-admin-gutenberg.php',
         'WPM\\Includes\\Admin\\WPM_Admin_Menus' => __DIR__ . '/../..' . '/includes/admin/class-wpm-admin-menus.php',
         'WPM\\Includes\\Admin\\WPM_Admin_Meta_Boxes' => __DIR__ . '/../..' . '/includes/admin/class-wpm-admin-meta-boxes.php',
         'WPM\\Includes\\Admin\\WPM_Admin_Notices' => __DIR__ . '/../..' . '/includes/admin/class-wpm-admin-notices.php',
@@ -42,7 +43,6 @@ class ComposerStaticInit9ae6f242f9c6793cf96494f7f4f3ca37
         'WPM\\Includes\\Integrations\\WPM_Better_Search' => __DIR__ . '/../..' . '/includes/integrations/class-wpm-better-search.php',
         'WPM\\Includes\\Integrations\\WPM_BuddyPress' => __DIR__ . '/../..' . '/includes/integrations/class-wpm-buddypress.php',
         'WPM\\Includes\\Integrations\\WPM_CF7' => __DIR__ . '/../..' . '/includes/integrations/class-wpm-cf7.php',
-        'WPM\\Includes\\Integrations\\WPM_Gutenberg' => __DIR__ . '/../..' . '/includes/integrations/class-wpm-gutenberg.php',
         'WPM\\Includes\\Integrations\\WPM_MailChimp_For_WP' => __DIR__ . '/../..' . '/includes/integrations/class-wpm-mailchimp-for-wp.php',
         'WPM\\Includes\\Integrations\\WPM_Masterslider' => __DIR__ . '/../..' . '/includes/integrations/class-wpm-masterslider.php',
         'WPM\\Includes\\Integrations\\WPM_Megamenu' => __DIR__ . '/../..' . '/includes/integrations/class-wpm-megamenu.php',
@@ -79,8 +79,8 @@ class ComposerStaticInit9ae6f242f9c6793cf96494f7f4f3ca37
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixesPsr0 = ComposerStaticInit9ae6f242f9c6793cf96494f7f4f3ca37::$prefixesPsr0;
-            $loader->classMap = ComposerStaticInit9ae6f242f9c6793cf96494f7f4f3ca37::$classMap;
+            $loader->prefixesPsr0 = ComposerStaticInit10f68284d303303872430af9e5a79198::$prefixesPsr0;
+            $loader->classMap = ComposerStaticInit10f68284d303303872430af9e5a79198::$classMap;
 
         }, null, ClassLoader::class);
     }

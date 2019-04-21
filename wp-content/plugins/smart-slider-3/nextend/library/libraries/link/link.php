@@ -28,15 +28,25 @@ class N2LinkParser {
     }
 }
 
+
+class N2LinkScrollToAlias {
+
+    public static function parse($argument, &$attributes, $isEditor = false) {
+
+        return N2LinkScrollTo::parse('[data-alias=\"' . $argument . '\"]', $attributes, $isEditor);
+    }
+}
+
 class N2LinkScrollTo {
 
     private static function init() {
         static $inited = false;
+        $speed = N2SmartSliderSettings::get('smooth-scroll-speed', 400);
         if (!$inited) {
             N2JS::addInline('
             window.n2Scroll = {
                 to: function(top){
-                    $("html, body").animate({ scrollTop: top }, 400);
+                    $("html, body").animate({ scrollTop: top }, ' . $speed . ');
                 },
                 top: function(){
                     n2Scroll.to(0);
@@ -109,7 +119,11 @@ class N2LinkScrollTo {
                     $onclick = 'n2Scroll.previous(this, ".n2-ss-slider");';
                     break;
                 default:
-                    $onclick = 'n2Scroll.element("' . $argument . '");';
+                    if (is_numeric($argument)) {
+                        $onclick = 'n2Scroll.element("#n2-ss-' . $argument . '");';
+                    } else {
+                        $onclick = 'n2Scroll.element("' . $argument . '");';
+                    }
                     break;
             }
             $attributes['onclick'] = $onclick . "return false;";

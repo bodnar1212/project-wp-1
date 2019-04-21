@@ -26,25 +26,9 @@ N2D('SmartSliderWidgetBulletTransition', function ($, undefined) {
 
         this.bar = this.slider.sliderElement.find('.nextend-bullet-bar');
 
-        var event = 'universalclick';
-        if (parameters.action == 'mouseenter') {
-            event = 'mouseenter';
-        }
-        this.originalDots = this.dots = this.bar.find('div').on(event, $.proxy(this.onDotClick, this));
-
-        if (this.slider.isShuffled) {
-            var dots = [],
-                thumbnails = [];
-            for (var i = 0; this.slider.realSlides.length > i; i++) {
-                var slide = this.slider.realSlides[i];
-                dots.push(this.dots.get(slide.originalIndex));
-                thumbnails.push(this.parameters.thumbnails[slide.originalIndex]);
-                if (parameters.numeric) {
-                    this.dots.eq(slide.originalIndex).html(i + 1);
-                }
-            }
-            this.originalDots = this.dots = $(dots).appendTo(this.dots.parent());
-            this.parameters.thumbnails = thumbnails;
+        this.event = 'universalclick';
+        if (this.parameters.action === 'mouseenter') {
+            this.event = 'universalenter';
         }
 
         this.slider.sliderElement.on({
@@ -54,7 +38,7 @@ N2D('SmartSliderWidgetBulletTransition', function ($, undefined) {
 
         this.slider.firstSlideReady.done($.proxy(this.onFirstSlideSet, this));
 
-        if (parameters.overlay == 0) {
+        if (parameters.overlay === 0) {
             var side = false;
             switch (parameters.area) {
                 case 1:
@@ -77,22 +61,22 @@ N2D('SmartSliderWidgetBulletTransition', function ($, undefined) {
                 this.slider.responsive.addStaticMargin(side, this);
             }
         }
-
-        this.initThumbnails();
     };
 
     SmartSliderWidgetBulletTransition.prototype.onFirstSlideSet = function (slide) {
-        this.dots.eq(slide.index).addClass('n2-active');
+
+        this.onSlideCountChanged();
+        this.$dots.eq(slide.index).addClass('n2-active');
     };
 
-    SmartSliderWidgetBulletTransition.prototype.onDotClick = function (e) {
-        this.slider.directionalChangeToReal(this.originalDots.index(e.currentTarget));
+    SmartSliderWidgetBulletTransition.prototype.onDotClick = function (i, e) {
+        this.slider.directionalChangeTo(i);
         $(e.target).blur();
     };
 
     SmartSliderWidgetBulletTransition.prototype.onSlideSwitch = function (e, targetSlideIndex) {
-        this.dots.filter('.n2-active').removeClass('n2-active');
-        this.dots.eq(targetSlideIndex).addClass('n2-active');
+        this.$dots.filter('.n2-active').removeClass('n2-active');
+        this.$dots.eq(targetSlideIndex).addClass('n2-active');
     };
 
     SmartSliderWidgetBulletTransition.prototype.isVisible = function () {
@@ -100,24 +84,10 @@ N2D('SmartSliderWidgetBulletTransition', function ($, undefined) {
     };
 
     SmartSliderWidgetBulletTransition.prototype.getSize = function () {
-        if (this.axis == 'horizontal') {
+        if (this.axis === 'horizontal') {
             return this.bar.height() + this.offset;
         }
         return this.bar.width() + this.offset;
-    };
-
-    SmartSliderWidgetBulletTransition.prototype.initThumbnails = function () {
-        if (this.parameters.thumbnails.length > 0) {
-            this.dots.each($.proxy(function (i, el) {
-                if (this.parameters.thumbnails[i] != '') {
-                    $(el).on({
-                        universalenter: $.proxy(this.showThumbnail, this, i)
-                    }, {
-                        leaveOnSecond: true
-                    })
-                }
-            }, this));
-        }
     };
 
     SmartSliderWidgetBulletTransition.prototype.showThumbnail = function (i, e) {
@@ -127,13 +97,11 @@ N2D('SmartSliderWidgetBulletTransition', function ($, undefined) {
             opacity: 1
         });
 
-        this.originalDots.eq(i).on('universalleave.thumbnailleave', $.proxy(this.hideThumbnail, this, i, thumbnail));
+        this.$dots.eq(i).one('universalleave.thumbnailleave', $.proxy(this.hideThumbnail, this, i, thumbnail));
     };
 
     SmartSliderWidgetBulletTransition.prototype.hideThumbnail = function (i, thumbnail, e) {
         e.stopPropagation();
-
-        this.originalDots.eq(i).off('universalleave.thumbnailleave');
 
         NextendTween.to(thumbnail, 0.3, {
             opacity: 0,
@@ -144,8 +112,8 @@ N2D('SmartSliderWidgetBulletTransition', function ($, undefined) {
     };
 
     SmartSliderWidgetBulletTransition.prototype.getThumbnail = function (i) {
-        var target = this.originalDots.eq(i);
-        var sliderOffset = this.slider.sliderElement.offset(),
+        var target = this.$dots.eq(i),
+            sliderOffset = this.slider.sliderElement.offset(),
             targetOffset = target.offset(),
             targetW = target.outerWidth(),
             targetH = target.outerHeight();
@@ -155,7 +123,7 @@ N2D('SmartSliderWidgetBulletTransition', function ($, undefined) {
                 .css({
                     width: this.parameters.thumbnailWidth,
                     height: this.parameters.thumbnailHeight,
-                    backgroundImage: 'url("' + this.parameters.thumbnails[i] + '")'
+                    backgroundImage: 'url("' + this.slider.slides[i].getThumbnail() + '")'
                 })
                 .addClass('n2-ss-bullet-thumbnail'))
             .addClass(this.parameters.thumbnailStyle)
@@ -193,20 +161,37 @@ N2D('SmartSliderWidgetBulletTransition', function ($, undefined) {
         return thumbnail;
     };
 
-    SmartSliderWidgetBulletTransition.prototype.onSlideCountChanged = function (e, newCount, slidesInGroup) {
-        this.dots = $();
-        for (var i = 0; this.originalDots.length > i; i++) {
-            if (i % slidesInGroup == 0) {
-                this.dots = this.dots.add(this.originalDots.eq(i).css("display", ""));
-            } else {
-                this.originalDots.eq(i).css("display", "none");
+    SmartSliderWidgetBulletTransition.prototype.onSlideCountChanged = function () {
+
+        this.bar.html('');
+
+        for (var i = 0; i < this.slider.slides.length; i++) {
+            var slide = this.slider.slides[i],
+                $dot = $('<div class="n2-ow ' + this.parameters.dotClasses + '" tabindex="0"></div>')
+                    .on(this.event, $.proxy(this.onDotClick, this, i))
+                    .appendTo(this.bar);
+            switch (this.parameters.mode) {
+                case 'numeric':
+                    $dot.html(i + 1);
+                    break;
+                case 'title':
+                    $dot.html(slide.getTitle());
+                    break;
+            }
+
+            if (this.parameters.thumbnail === 1) {
+                var thumbnail = slide.getThumbnail();
+                if (thumbnail) {
+                    $dot.on({
+                        universalenter: $.proxy(this.showThumbnail, this, i)
+                    }, {
+                        leaveOnSecond: true
+                    })
+                }
             }
         }
-        if (this.parameters.numeric) {
-            this.dots.each(function (i, el) {
-                el.innerHTML = i + 1;
-            });
-        }
+
+        this.$dots = this.bar.find('>*');
     };
 
     return SmartSliderWidgetBulletTransition;

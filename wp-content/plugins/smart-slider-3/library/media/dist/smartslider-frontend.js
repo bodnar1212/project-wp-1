@@ -13,6 +13,7 @@ N2D('SmartSliderBackgrounds', function ($, undefined) {
         //this.load = $.Deferred();
 
         this.slider = slider;
+        this.hasFixed = false;
 
         this.lazyLoad = slider.parameters.lazyLoad;
         this.lazyLoadNeighbor = slider.parameters.lazyLoadNeighbor;
@@ -55,9 +56,9 @@ N2D('SmartSliderBackgrounds', function ($, undefined) {
     SmartSliderBackgrounds.prototype.onVisibleSlidesChanged = function () {
 
         if (this.lazyLoad == 1) {
-            this.load = this.preLoadSlides(this.slider.getVisibleSlides(this.slider.currentSlide));
+            this.load = $.when.apply($, this.preLoadSlides(this.slider.getVisibleSlides(this.slider.currentSlide)));
         } else if (this.lazyLoad == 2) { // delayed
-            this.load = this.preLoadSlides(this.slider.getVisibleSlides(this.slider.currentSlide));
+            this.load = $.when.apply($, this.preLoadSlides(this.slider.getVisibleSlides(this.slider.currentSlide)));
         }
     };
 
@@ -67,16 +68,18 @@ N2D('SmartSliderBackgrounds', function ($, undefined) {
 
         this.slider.sliderElement.on('SliderDevice', $.proxy(this.onSlideDeviceChanged, this));
 
-        this.preLoadSlides = this._preLoadSlides;
         if (this.lazyLoad == 1) {
             this.preLoadSlides = this.preloadSlidesLazyNeighbor;
 
-            this.load = this.preLoadSlides(this.slider.getVisibleSlides(this.slider.currentSlide));
+            this.load = this.whenWithProgress($, this.preLoadSlides(this.slider.getVisibleSlides(this.slider.currentSlide)));
         } else if (this.lazyLoad == 2) { // delayed
+            this.preLoadSlides = this._preLoadSlides;
             $(window).on('load', $.proxy(this.preLoadAll, this));
 
-            this.load = this.preLoadSlides(this.slider.getVisibleSlides(this.slider.currentSlide));
+            this.load = this.whenWithProgress($, this.preLoadSlides(this.slider.getVisibleSlides(this.slider.currentSlide)));
         } else {
+            this.preLoadSlides = this._preLoadSlides;
+
             this.load = this.whenWithProgress(this.preLoadAll());
         }
     };
@@ -107,11 +110,11 @@ N2D('SmartSliderBackgrounds', function ($, undefined) {
             deferreds.push(slides[i].preLoad());
         }
 
-        return $.when.apply($, deferreds);
+        return deferreds;
     };
 
     SmartSliderBackgrounds.prototype.preloadSlidesLazyNeighbor = function (slides) {
-        var deferreds = [this._preLoadSlides(slides)];
+        var deferreds = this._preLoadSlides(slides);
 
         if (this.lazyLoadNeighbor) {
             var j = 0,
@@ -151,7 +154,9 @@ N2D('SmartSliderBackgrounds', function ($, undefined) {
             }, 100);
         }
 
-        return renderedDeferred;
+        deferreds.push(renderedDeferred);
+
+        return deferreds;
     };
 
     SmartSliderBackgrounds.prototype.hack = function () {
@@ -169,7 +174,7 @@ N2D('SmartSliderLoad', function ($, undefined) {
     /**
      * @memberOf N2Classes
      *
-     * @param smartSlider
+     * @param {N2Classes.SmartSliderAbstract} smartSlider
      * @param parameters
      * @constructor
      */
@@ -182,6 +187,9 @@ N2D('SmartSliderLoad', function ($, undefined) {
 
         this.deferred = $.Deferred();
 
+        /**
+         * @type {N2Classes.SmartSliderAbstract}
+         */
         this.smartSlider = smartSlider;
 
         this.spinnerCouner = 0;
@@ -209,9 +217,11 @@ N2D('SmartSliderLoad', function ($, undefined) {
 
             var spinnerCounter = this.spinner.find('.n2-ss-spinner-counter');
             if (spinnerCounter.length) {
-                this.smartSlider.backgrounds.load.progress($.proxy(function (current, total) {
-                    spinnerCounter.html(Math.round(current / (total + 1) * 100) + '%');
-                }, this));
+                spinnerCounter.html('0%');
+                this.smartSlider.backgrounds.load
+                    .progress($.proxy(function (current, total) {
+                        spinnerCounter.html(Math.round(current / (total + 1) * 100) + '%');
+                    }, this));
             }
 
             this.showSlider();
@@ -263,13 +273,14 @@ N2D('SmartSliderLoad', function ($, undefined) {
 
             this.smartSlider.sliderElement.trigger('BeforeVisible');
 
-            this.smartSlider.responsive.alignElement.addClass('n2-ss-slider-align-visible');
+            this.smartSlider.responsive.alignElement.addClass('n2-ss-align-visible');
 
             n2c.log('Fade start');
             this.smartSlider.sliderElement
                 .addClass('n2-ss-loaded')
                 .removeClass('n2notransition');
 
+            this.spinner.find('.n2-ss-spinner-counter').html('');
             this.removeSpinner('fadePlaceholder');
             $('#' + this.id + '-placeholder').remove();
             this.loadingArea = this.smartSlider.sliderElement;
@@ -392,7 +403,6 @@ N2D('SmartSliderApi', function ($, undefined) {
         this.sliders = {};
         this.readys = {};
 
-        this._resetCounters = [];
     }
 
     SmartSliderApi.prototype.makeReady = function (id, slider) {
@@ -417,25 +427,32 @@ N2D('SmartSliderApi', function ($, undefined) {
 
     SmartSliderApi.prototype.trigger = function (el, e) {
         var $el = $(el),
-            split = e.split(','),
-            slide = $el.closest('.n2-ss-slide,.n2-ss-static-slide');
+            parts = e.split(','),
+            slide = $el.closest('.n2-ss-slide,.n2-ss-static-slide'),
+            lastEvent = slide.data('ss-last-event');
 
-        if (split.length > 1) {
-            if ($.inArray(el, this._resetCounters) == -1) {
-                this._resetCounters.push(el);
+        if (!$el.data('ss-reset-events')) {
+            $el.data('ss-reset-events', 1);
 
-                slide.on('layerAnimationSetStart.resetCounter', function () {
-                    $el.data('eventCounter', 0);
-                });
-            }
-            var counter = $el.data('eventCounter') || 0;
-            e = split[counter];
-            counter++;
-            if (counter > split.length - 1) {
-                counter = 0;
-            }
-            $el.data('eventCounter', counter);
+            slide.on('layerAnimationPlayIn.resetCounter', $.proxy(function (slide) {
+                slide.data('ss-last-event', '');
+            }, this, slide));
         }
+
+        var match = parts.length - 1;
+        for (var i = 0; i < parts.length; i++) {
+
+            if (parts[i] === lastEvent) {
+                match = i;
+            }
+        }
+        if (match === parts.length - 1) {
+            e = parts[0];
+        } else {
+            e = parts[match + 1];
+        }
+
+        slide.data('ss-last-event', e);
         slide.triggerHandler('ss' + e);
     };
 
@@ -445,7 +462,9 @@ N2D('SmartSliderApi', function ($, undefined) {
     };
 
     SmartSliderApi.prototype.applyActionWithClick = function () {
-        if (!nextend.shouldPreventClick) this.applyAction.apply(this, arguments);
+        if (!nextend.shouldPreventClick) {
+            this.applyAction.apply(this, arguments);
+        }
     };
 
     window.n2ss = new SmartSliderApi();
@@ -465,7 +484,7 @@ N2D('SmartSliderAbstract', function ($, undefined) {
     function SmartSliderAbstract(elementID, parameters) {
 
         /**
-         * @type {EditorAbstract}
+         * @type {N2Classes.EditorAbstract}
          */
         this.editor = null;
 
@@ -479,9 +498,14 @@ N2D('SmartSliderAbstract', function ($, undefined) {
         var id = elementID.substr(1);
         this.elementID = id;
 
-        if (window[id] && window[id] instanceof SmartSliderAbstract && $.contains(document.body, window[id].sliderElement.get(0))) {
-            console.error('Slider [#' + id + '] embedded multiple times');
-            return;
+        if (window[id] && window[id] instanceof SmartSliderAbstract) {
+            if (window[id].sliderElement === undefined) {
+                console.error('Slider [#' + id + '] inited multiple times');
+                return;
+            } else if ($.contains(document.body, window[id].sliderElement.get(0))) {
+                console.error('Slider [#' + id + '] embedded multiple times');
+                return;
+            }
         }
 
         this.readyDeferred = $.Deferred();
@@ -497,7 +521,14 @@ N2D('SmartSliderAbstract', function ($, undefined) {
         // Register our object to a global variable
         window[id] = this;
 
-        this.waitForExists(id, parameters);
+        if (parameters.isDelayed !== undefined && parameters.isDelayed) {
+            $(window).ready($.proxy(function () {
+                this.waitForExists(id, parameters);
+            }, this));
+        } else {
+            this.waitForExists(id, parameters);
+        }
+
     }
 
     SmartSliderAbstract.prototype.kill = function () {
@@ -529,6 +560,12 @@ N2D('SmartSliderAbstract', function ($, undefined) {
                 this.sliderElement.closest('.n2-ss-align').remove();
             }, this));
         }
+
+        /**
+         * If the killed slider has a dependency we force them to show
+         */
+        n2ss.makeReady(this.id, this);
+        this.readyDeferred.resolve();
     };
 
     SmartSliderAbstract.prototype.waitForExists = function (id, parameters) {
@@ -548,16 +585,11 @@ N2D('SmartSliderAbstract', function ($, undefined) {
 
     SmartSliderAbstract.prototype.onSliderExists = function (id, parameters, $sliderElement) {
 
-        if ($sliderElement.prop('tagName') == 'SCRIPT') {
+        if ($sliderElement.prop('tagName') === 'TEMPLATE') {
             var dependency = $sliderElement.data('dependency'),
                 delay = $sliderElement.data('delay'),
                 rocketLoad = $.proxy(function () {
-                    var rocketSlider = $($sliderElement.html()
-                        .replace(/^\/\*<!\[CDATA\[\*\/(.*)\/\*\]\]>\*\/$/, function (a, b) {
-                            return b;
-                        })
-                        .replace(/<_s_c_r_i_p_t/g, '<script')
-                        .replace(/<_\/_s_c_r_i_p_t/g, '</script'));
+                    var rocketSlider = $($sliderElement.html());
                     $sliderElement.replaceWith(rocketSlider);
 
                     this.waitForDimension($('#' + id), parameters);
@@ -605,8 +637,16 @@ N2D('SmartSliderAbstract', function ($, undefined) {
     SmartSliderAbstract.prototype.onSliderHasDimension = function ($sliderElement, parameters) {
         this.killed = false;
 
+        if (n2const.isIE) {
+            $sliderElement.attr('data-ie', n2const.isIE);
+        } else if (n2const.isEdge) {
+            $sliderElement.attr('data-ie', n2const.isEdge);
+        }
+
+        this.slideClass = this.slideClass || 'FrontendSliderSlide';
+
         /**
-         * @type {SmartSliderResponsive}
+         * @type {N2Classes.SmartSliderResponsive}
          */
         this.responsive = false;
         this.mainAnimationLastChangeTime = 0;
@@ -630,6 +670,12 @@ N2D('SmartSliderAbstract', function ($, undefined) {
 
         this.needBackgroundWrap = false;
 
+        /**
+         * Block carousel in vertical touch + revert
+         * @type {boolean}
+         */
+        this.blockCarousel = false;
+
         this.parameters = $.extend({
             admin: false,
             playWhenVisible: 1,
@@ -641,11 +687,10 @@ N2D('SmartSliderAbstract', function ($, undefined) {
             maintainSession: 0,
             align: 'normal',
             controls: {
-                drag: false,
                 touch: 'horizontal',
                 keyboard: false,
-                scroll: false,
-                tilt: false
+                mousewheel: false,
+                blockCarouselInteraction: 1
             },
             hardwareAcceleration: true,
             layerMode: {
@@ -679,13 +724,26 @@ N2D('SmartSliderAbstract', function ($, undefined) {
             lightboxDeviceImages: [],
             titles: [],
             descriptions: [],
-            'background.parallax.tablet': 0,
-            'background.parallax.mobile': 0,
             allowBGImageAttachmentFixed: 1,
+            backgroundParallax: {
+                strength: 0,
+                tablet: 0,
+                mobile: 0
+            },
             particlejs: 0
         }, parameters);
 
-        this.disableLayerAnimations = false;
+        this.disabled = {
+            layerAnimations: false,
+            layerSplitTextAnimations: false,
+            backgroundAnimations: false,
+            postBackgroundAnimations: false
+        };
+
+        if (n2const.isSamsungBrowser) {
+            this.disabled.layerSplitTextAnimations = true;
+            this.disabled.postBackgroundAnimations = true;
+        }
 
         if (!this.isAdmin) {
             if (!parameters.responsive.desktop || !parameters.responsive.tablet || !parameters.responsive.mobile) {
@@ -765,7 +823,7 @@ N2D('SmartSliderAbstract', function ($, undefined) {
     };
 
     SmartSliderAbstract.prototype.changeActiveBeforeLoad = function (index) {
-        if (index > 0 && index < this.realSlides.length && this.starterSlide !== this.realSlides[index]) {
+        if (index >= 0 && index < this.realSlides.length && this.starterSlide !== this.realSlides[index]) {
 
             this.unsetActiveSlide(this.starterSlide);
 
@@ -799,6 +857,10 @@ N2D('SmartSliderAbstract', function ($, undefined) {
 
         for (var j = 0; j < this.parameters.initCallbacks.length; j++) {
             (new Function('$', this.parameters.initCallbacks[j])).call(this, $);
+        }
+
+        if (this.disableLayerAnimations === true) {
+            this.disabled.layerAnimations = true;
         }
 
         this.widgets = new N2Classes.SmartSliderWidgets(this);
@@ -947,7 +1009,7 @@ N2D('SmartSliderAbstract', function ($, undefined) {
 
         var $slides = this.sliderElement.find('.n2-ss-slide');
         for (var i = 0; i < $slides.length; i++) {
-            this.slides.push(new N2Classes.FrontendSliderSlide(this, $slides.eq(i), i));
+            this.slides.push(new N2Classes[this.slideClass](this, $slides.eq(i), i));
         }
 
         this.starterSlide = this.slides[0];
@@ -1060,6 +1122,7 @@ N2D('SmartSliderAbstract', function ($, undefined) {
     };
 
     SmartSliderAbstract.prototype.startVisibilityCheck = function () {
+
         if (!this.isAdmin && this.parameters.playWhenVisible) {
             this.ready($.proxy(function () {
                 $(window).on('scroll.n2-ss-visible' + this.id + ' resize.n2-ss-visible' + this.id, $.proxy(this.checkIfVisible, this));
@@ -1073,14 +1136,28 @@ N2D('SmartSliderAbstract', function ($, undefined) {
     };
 
     SmartSliderAbstract.prototype.checkIfVisible = function () {
-        var windowOffsetTop = $(window).scrollTop(),
+        var playWhenVisibleAt = this.parameters.playWhenVisibleAt,
+            windowOffsetTop = $(window).scrollTop(),
             windowHeight = $(window).height(),
-            sliderTop = this.sliderElement.offset().top,
-            middlePointTop = sliderTop + Math.min(this.sliderElement.height(), windowHeight) * (1 - this.parameters.playWhenVisibleAt),
-            middlePointBottom = sliderTop + Math.min(this.sliderElement.height(), windowHeight) * this.parameters.playWhenVisibleAt;
+            bodyHeight = $(document).height(),
+            sliderBoundingClientRect = this.sliderElement[0].getBoundingClientRect(),
+            requiredVisibility = windowHeight * playWhenVisibleAt / 2,
+            topLine = windowOffsetTop + requiredVisibility,
+            bottomLine = windowOffsetTop + windowHeight - requiredVisibility;
 
-        if (this.isAdmin || (middlePointTop >= windowOffsetTop && middlePointBottom <= windowOffsetTop + windowHeight)) {
-            $(window).off('scroll.n2-ss-visible' + this.id + ' resize.n2-ss-visible' + this.id);
+        if (windowOffsetTop < requiredVisibility) {
+            topLine *= (windowOffsetTop / requiredVisibility);
+        }
+
+        if (windowOffsetTop + windowHeight > bodyHeight - requiredVisibility) {
+            bottomLine += windowOffsetTop + windowHeight - bodyHeight + requiredVisibility;
+        }
+
+        var sliderAbsoluteTop = windowOffsetTop + sliderBoundingClientRect.top,
+            sliderAbsoluteBottom = windowOffsetTop + sliderBoundingClientRect.bottom;
+
+        if (this.isAdmin || (sliderAbsoluteTop <= bottomLine && sliderAbsoluteTop >= topLine) || (sliderAbsoluteBottom >= topLine && sliderAbsoluteBottom <= bottomLine) || (sliderAbsoluteTop <= topLine && sliderAbsoluteBottom >= bottomLine)) {
+            $(window).off('.n2-ss-visible' + this.id);
             this.visibleDeferred.resolve();
         }
     };
@@ -1097,23 +1174,87 @@ N2D('SmartSliderAbstract', function ($, undefined) {
     };
 
     SmartSliderAbstract.prototype.focus = function (isSystem) {
-        var deferred = $.Deferred();
-        if (isSystem === undefined) {
-            isSystem = 0;
+        var needFocus = false;
+
+        if (this.responsive.parameters.focusUser && !isSystem) {
+            needFocus = true;
+        } else if (this.responsive.parameters.focusAutoplay && isSystem) {
+            needFocus = true;
         }
-        if (this.responsive.parameters.focusUser && !isSystem || this.responsive.parameters.focusAutoplay && isSystem) {
-            var top = this.sliderElement.offset().top - (this.responsive.verticalOffsetSelectors.height() || 0);
-            if ($(window).scrollTop() !== top) {
-                $("html, body").animate({scrollTop: top}, 400, $.proxy(function () {
-                    deferred.resolve();
-                }, this));
+
+        if (needFocus) {
+            /**
+             * .getBoundingClientRect() adjusted by the $(window).scrollTop()
+             */
+            var scrollTop = $(window).scrollTop(),
+                focusOffsetTop = this.responsive.focusOffsetTop,
+                focusOffsetBottom = this.responsive.focusOffsetBottom,
+                windowHeight = $(window).height(),
+                sliderBoundingClientRect = this.sliderElement[0].getBoundingClientRect(),
+                topLine = sliderBoundingClientRect.top - focusOffsetTop,
+                bottomLine = windowHeight - sliderBoundingClientRect.bottom - focusOffsetBottom;
+
+            if (topLine <= 0 && bottomLine <= 0) {
+                // Do nothing, slider is taller than the screen and the the slider on the screen
+            } else if (topLine > 0 && bottomLine > 0) {
+                // Do nothing, slider is shorter than the screen and the the slider on the screen
             } else {
-                deferred.resolve();
+                var targetTop = scrollTop;
+                if (topLine < 0) {
+                    if (-topLine <= bottomLine) {
+                        // scroll to the top edge
+                        targetTop = scrollTop - focusOffsetTop + sliderBoundingClientRect.top;
+                    } else {
+                        // scroll to the bottom edge
+                        targetTop = scrollTop + focusOffsetBottom + sliderBoundingClientRect.bottom - windowHeight;
+                    }
+                } else if (bottomLine < 0) {
+                    if (-bottomLine <= topLine) {
+                        // scroll to the bottom edge
+                        targetTop = scrollTop + focusOffsetBottom + sliderBoundingClientRect.bottom - windowHeight;
+                    } else {
+                        // scroll to the top edge
+                        targetTop = scrollTop - focusOffsetTop + sliderBoundingClientRect.top;
+                    }
+                }
+
+                if (targetTop !== scrollTop) {
+                    return this._scrollTo(targetTop, Math.abs(scrollTop - targetTop));
+                }
             }
-        } else {
-            deferred.resolve();
         }
+
+        return true;
+    };
+
+    SmartSliderAbstract.prototype._scrollTo = function (targetTop, duration) {
+
+        var deferred = $.Deferred();
+        window.nextendScrollFocus = true;
+
+        $("html, body").animate({scrollTop: targetTop}, duration, $.proxy(function () {
+            deferred.resolve();
+            setTimeout(function () {
+                window.nextendScrollFocus = false;
+            }, 100);
+        }, this));
+
         return deferred;
+    };
+
+    /**
+     * Change is carousel if:
+     * - first slide -> -1 slide not exists
+     * - last slide -> +1 slide not exists
+     */
+    SmartSliderAbstract.prototype.isChangeCarousel = function (direction) {
+        if (direction === 'next') {
+            return this.currentSlide.index + 1 >= this.slides.length;
+        } else if (direction === 'previous') {
+            return this.currentSlide.index - 1 < 0;
+        }
+
+        return false;
     };
 
     SmartSliderAbstract.prototype.initNotCarousel = function () {
@@ -1236,7 +1377,7 @@ N2D('SmartSliderAbstract', function ($, undefined) {
             n2c.log('Event: sliderSwitchTo: ', 'targetSlideIndex');
             this.sliderElement.trigger('sliderSwitchTo', [nextSlideIndex, this.getRealIndex(nextSlideIndex)]);
             var time = $.now();
-            $.when(this.backgrounds.preLoadSlides(this.getVisibleSlides(this.slides[nextSlideIndex])), this.focus(isSystem)).done($.proxy(function () {
+            $.when($.when.apply($, this.backgrounds.preLoadSlides(this.getVisibleSlides(this.slides[nextSlideIndex]))), this.focus(isSystem)).done($.proxy(function () {
 
                 if (this.mainAnimationLastChangeTime <= time) {
                     this.mainAnimationLastChangeTime = time;
@@ -1260,7 +1401,7 @@ N2D('SmartSliderAbstract', function ($, undefined) {
 
                         this._changeCurrentSlide(nextSlideIndex);
 
-                    } else if (state === 'playing') {
+                    } else if (state === 'initAnimation' || state === 'playing') {
                         this.sliderElement.off('.fastChange').one('mainAnimationComplete.fastChange', $.proxy(function () {
                             this.changeTo.call(this, nextSlideIndex, reversed, isSystem, customAnimation);
                         }, this));
@@ -1275,6 +1416,8 @@ N2D('SmartSliderAbstract', function ($, undefined) {
 
     SmartSliderAbstract.prototype._changeCurrentSlide = function (index) {
         this.currentRealSlide = this.currentSlide = this.slides[index];
+
+        this.sliderElement.triggerHandler('sliderChangeCurrentSlide');
     };
 
     SmartSliderAbstract.prototype._changeTo = function (nextSlideIndex, reversed, isSystem, customAnimation) {
@@ -1333,25 +1476,26 @@ N2D('SmartSliderAbstract', function ($, undefined) {
 
         if (!this.parameters.admin) {
             if (this.hasTouch()) {
-                new N2Classes.SmartSliderControlTouch(this, this.parameters.controls.touch, {
-                    fallbackToMouseEvents: this.parameters.controls.drag
-                });
+                switch (this.parameters.controls.touch) {
+                    case 'vertical':
+                        new N2Classes.SmartSliderControlTouchVertical(this);
+                        break;
+                    case 'horizontal':
+                        new N2Classes.SmartSliderControlTouchHorizontal(this);
+                        break;
+                }
             }
 
             if (this.parameters.controls.keyboard) {
                 if (typeof this.controls.touch !== 'undefined') {
-                    new N2Classes.SmartSliderControlKeyboard(this, this.controls.touch._direction.axis);
+                    new N2Classes.SmartSliderControlKeyboard(this, this.controls.touch.axis);
                 } else {
                     new N2Classes.SmartSliderControlKeyboard(this, 'horizontal');
                 }
             }
 
-            if (this.parameters.controls.scroll) {
-                new N2Classes.SmartSliderControlScroll(this);
-            }
-
-            if (this.parameters.controls.tilt) {
-                new N2Classes.SmartSliderControlTilt(this);
+            if (this.parameters.controls.mousewheel) {
+                new N2Classes.SmartSliderControlMouseWheel(this);
             }
 
             this.controlAutoplay = new N2Classes.SmartSliderControlAutoplay(this, this.parameters.autoplay);
@@ -1445,7 +1589,8 @@ N2D('SmartSliderWidgets', function ($, undefined) {
             hover: false,
             nonCarouselFirst: false,
             nonCarouselLast: false,
-            currentSlideIndex: -1
+            currentSlideIndex: -1,
+            singleSlide: false
         };
 
         this.widgets = {
@@ -1517,11 +1662,23 @@ N2D('SmartSliderWidgets', function ($, undefined) {
                 state = false;
             }
 
+            if (state && this.states['singleSlide']) {
+                if (widgetName === 'previous' || widgetName === 'next' || widgetName === 'bullet' || widgetName === 'autoplay' || widgetName === 'indicator') {
+                    state = false;
+                }
+            }
+
             this.widgets[widgetName].toggleClass('n2-ss-widget-hidden', !state);
         }
     };
 
     SmartSliderWidgets.prototype.onReady = function () {
+        this.slider.sliderElement
+            .on('slideCountChanged', $.proxy(function () {
+                    this.setState('singleSlide', this.slider.slides.length <= 1);
+                }, this)
+            );
+
         this.dimensions = this.slider.dimensions;
 
         this.$vertical = this.sliderElement.find('[data-position="above"],[data-position="below"]').not('.nextend-shadow');
@@ -1560,7 +1717,10 @@ N2D('SmartSliderWidgets', function ($, undefined) {
             }, this);
 
             refreshSlideIndex(null, this.slider.currentRealSlide.index);
-            this.slider.sliderElement.on('sliderSwitchTo', refreshSlideIndex);
+            this.slider.sliderElement
+                .on({
+                    sliderSwitchTo: refreshSlideIndex
+                });
         }
 
         this.variableElementsDimension = {
@@ -1827,33 +1987,26 @@ N2D('SmartSliderMainAnimationAbstract', function ($, undefined) {
     };
 
     SmartSliderMainAnimationAbstract.prototype.setTouchProgress = function (progress) {
-        if (this.isReverseEnabled) {
-            this._setTouchProgressWithReverse(progress);
-        } else {
-            this._setTouchProgress(progress);
-        }
-    };
 
-    SmartSliderMainAnimationAbstract.prototype._setTouchProgress = function (progress) {
-        if (this.state != 'ended') {
-            if (progress <= 0) {
-                this.timeline.progress(Math.max(progress, 0.000001), false);
-            } else if (progress >= 0 && progress <= 1) {
-                this.timeline.progress(progress);
+        if (this.state !== 'ended') {
+            if (this.isReverseEnabled) {
+                if (progress === 0) {
+                    this.reverseTimeline.progress(0);
+                    this.timeline.progress(progress, false);
+                } else if (progress >= 0 && progress <= 1) {
+                    this.reverseTimeline.progress(0);
+                    this.timeline.progress(progress);
+                } else if (progress < 0 && progress >= -1) {
+                    this.timeline.progress(0);
+                    this.reverseTimeline.progress(Math.abs(progress));
+                }
+            } else {
+                if (progress <= 0) {
+                    this.timeline.progress(Math.max(progress, 0.000001), false);
+                } else if (progress >= 0 && progress <= 1) {
+                    this.timeline.progress(progress);
+                }
             }
-        }
-    };
-
-    SmartSliderMainAnimationAbstract.prototype._setTouchProgressWithReverse = function (progress) {
-        if (progress == 0) {
-            this.reverseTimeline.progress(0);
-            this.timeline.progress(progress, false);
-        } else if (progress >= 0 && progress <= 1) {
-            this.reverseTimeline.progress(0);
-            this.timeline.progress(progress);
-        } else if (progress < 0 && progress >= -1) {
-            this.timeline.progress(0);
-            this.reverseTimeline.progress(Math.abs(progress));
         }
     };
 
@@ -1914,7 +2067,7 @@ N2D('SmartSliderMainAnimationAbstract', function ($, undefined) {
     SmartSliderMainAnimationAbstract.prototype.fixTouchDuration = function (timeline, progress, duration) {
         var totalDuration = timeline.totalDuration(),
             modifiedDuration = Math.max(totalDuration / 3, Math.min(totalDuration, duration / Math.abs(progress) / 1000));
-        if (modifiedDuration != totalDuration) {
+        if (modifiedDuration !== totalDuration) {
             timeline.totalDuration(modifiedDuration);
         }
     };
@@ -2157,17 +2310,25 @@ N2D('SmartSliderControlAutoplay', function ($, undefined) {
             }
         }
         if (this.parameters.pause.click && !this.parameters.resume.click) {
-            sliderElement.on('universalclick.autoplay', $.proxy(this.pauseAutoplayUniversal, this));
+            sliderElement.on('universalclick.autoplay', $.proxy(function (e) {
+                if (e.ss3HandledAutoplay === undefined) {
+                    this.pauseAutoplayUniversal(e);
+                }
+            }, this));
         } else if (!this.parameters.pause.click && this.parameters.resume.click) {
             sliderElement.on('universalclick.autoplay', $.proxy(function (e) {
-                this.pauseAutoplayExtraPlayingEnded(e, 'autoplayButton');
+                if (e.ss3HandledAutoplay === undefined) {
+                    this.pauseAutoplayExtraPlayingEnded(e, 'autoplayButton');
+                }
             }, this));
         } else if (this.parameters.pause.click && this.parameters.resume.click) {
             sliderElement.on('universalclick.autoplay', $.proxy(function (e) {
-                if (!this._paused) {
-                    this.pauseAutoplayUniversal(e);
-                } else {
-                    this.pauseAutoplayExtraPlayingEnded(e, 'autoplayButton');
+                if (e.ss3HandledAutoplay === undefined) {
+                    if (!this._paused) {
+                        this.pauseAutoplayUniversal(e);
+                    } else {
+                        this.pauseAutoplayExtraPlayingEnded(e, 'autoplayButton');
+                    }
                 }
             }, this));
         }
@@ -2580,6 +2741,7 @@ N2D('SmartSliderControlFullscreen', function ($, undefined) {
     SmartSliderControlFullscreen.prototype._fullScreen = function () {
 
         if (this.forceFullpage) {
+            this.responsive.isFullScreen = true;
             this.responsive.parameters.type = 'fullpage';
             this.responsive.parameters.upscale = true;
             this.responsive.parameters.forceFull = false;
@@ -2610,6 +2772,7 @@ N2D('SmartSliderControlFullscreen', function ($, undefined) {
             $(window).trigger('resize'); //needed for Safari
         } else {
             if (this.forceFullpage) {
+                this.responsive.isFullScreen = false;
                 this.responsive.parameters.type = this._type;
                 this.responsive.parameters.upscale = this._upscale;
                 this.responsive.parameters.forceFull = this._forceFull;
@@ -2633,8 +2796,8 @@ N2D('SmartSliderControlFullscreen', function ($, undefined) {
         // Note that the browser fullscreen (triggered by short keys) might
         // be considered different from content fullscreen when expecting a boolean
         return ((document.fullscreenElement && document.fullscreenElement !== null) ||    // alternative standard methods
-        (document.msFullscreenElement && document.msFullscreenElement !== null) ||
-        document.mozFullScreen || document.webkitIsFullScreen);                   // current working methods
+            (document.msFullscreenElement && document.msFullscreenElement !== null) ||
+            document.mozFullScreen || document.webkitIsFullScreen);                   // current working methods
     };
 
 
@@ -2657,7 +2820,7 @@ N2D('SmartSliderControlKeyboard', function ($, undefined) {
 
         this.parameters = $.extend({}, parameters);
 
-        if (direction == 'vertical') {
+        if (direction === 'vertical') {
             this.parseEvent = SmartSliderControlKeyboard.prototype.parseEventVertical;
         } else {
             this.parseEvent = SmartSliderControlKeyboard.prototype.parseEventHorizontal;
@@ -2707,11 +2870,24 @@ N2D('SmartSliderControlKeyboard', function ($, undefined) {
     SmartSliderControlKeyboard.prototype.parseEventVertical = function (e) {
         switch (e.keyCode) {
             case 40: // down arrow
-                this.slider.next();
-                return true;
+
+                if (!this.slider.isChangeCarousel('next') || !this.slider.parameters.controls.blockCarouselInteraction) {
+
+                    this.slider.next();
+
+                    return true;
+                }
+
+                return false;
             case 38: // up arrow
-                this.slider.previous();
-                return true;
+
+                if (!this.slider.isChangeCarousel('previous') || !this.slider.parameters.controls.blockCarouselInteraction) {
+                    this.slider.previous();
+
+                    return true;
+                }
+
+                return false;
             default:
                 return false;
         }
@@ -2719,7 +2895,7 @@ N2D('SmartSliderControlKeyboard', function ($, undefined) {
 
     return SmartSliderControlKeyboard;
 });
-N2D('SmartSliderControlScroll', function ($, undefined) {
+N2D('SmartSliderControlMouseWheel', function ($, undefined) {
     "use strict";
 
     /**
@@ -2728,417 +2904,802 @@ N2D('SmartSliderControlScroll', function ($, undefined) {
      * @param slider
      * @constructor
      */
-    function SmartSliderControlScroll(slider) {
+    function SmartSliderControlMouseWheel(slider) {
 
         this.preventScroll = false;
-        this._preventScrollTimeout = null;
+        this.preventScrollGlobal = false;
 
         this.slider = slider;
 
-        slider.sliderElement.on('DOMMouseScroll mousewheel', $.proxy(this.onMouseWheel, this));
-        slider.sliderElement.on('mainAnimationComplete', $.proxy(this.clearScrollTimeout, this));
+        slider.sliderElement.on('wheel', $.proxy(this.onMouseWheel, this));
 
-        slider.controls.scroll = this;
+        slider.controls.mouseWheel = this;
     }
 
-    SmartSliderControlScroll.prototype.onMouseWheel = function (e) {
-        if (!this.preventScroll) {
+    SmartSliderControlMouseWheel.prototype.onMouseWheel = function (e) {
 
-            var up = false;
-            if (e.originalEvent) {
-                if (e.originalEvent.wheelDelta) up = e.originalEvent.wheelDelta / -1 < 0;
-                if (e.originalEvent.deltaY) up = e.originalEvent.deltaY < 0;
-                if (e.originalEvent.detail) up = e.originalEvent.detail < 0;
-            }
+        if (this.preventScroll === false) {
+
+            var up = e.originalEvent.deltaY < 0;
 
             if (up) {
-                if (this.slider.previous()) {
-                    this.preventScrollTimeout(e);
+                if (!this.slider.isChangeCarousel('previous') || !this.slider.parameters.controls.blockCarouselInteraction) {
+
+                    this.slider.previous();
+
+                    e.preventDefault();
+
+                    this.preventRepeat();
+                    this.preventGlobal();
                 }
             } else {
-                if (this.slider.next()) {
-                    this.preventScrollTimeout(e);
+                if (!this.slider.isChangeCarousel('next') || !this.slider.parameters.controls.blockCarouselInteraction) {
+
+                    this.slider.next();
+
+                    e.preventDefault();
+
+                    this.preventRepeat();
+                    this.preventGlobal();
                 }
             }
         } else {
-            this.preventScrollTimeout(e);
-        }
-    };
-
-    SmartSliderControlScroll.prototype.clearScrollTimeout = function () {
-        if (this._preventScrollTimeout !== null) {
-            clearTimeout(this._preventScrollTimeout);
-        }
-        this.preventScroll = false;
-        this._preventScrollTimeout = null;
-    };
-
-    SmartSliderControlScroll.prototype.preventScrollTimeout = function (e) {
-        if (this._preventScrollTimeout !== null) {
-            clearTimeout(this._preventScrollTimeout);
-        }
-        this.preventScroll = true;
-        e.preventDefault();
-        this._preventScrollTimeout = setTimeout($.proxy(function () {
-            this.preventScroll = false;
-            this._preventScrollTimeout = null;
-        }, this), 400);
-    };
-
-    return SmartSliderControlScroll;
-});
-N2D('SmartSliderControlTilt', function ($, undefined) {
-    "use strict";
-
-    /**
-     * @memberOf N2Classes
-     *
-     * @param slider
-     * @param parameters
-     * @returns {string}
-     * @constructor
-     */
-    function SmartSliderControlTilt(slider, parameters) {
-
-        if (window.DeviceOrientationEvent === undefined || window.orientation === undefined) {
-            return "Not supported";
-        }
-        this.timeout = null;
-
-        this.slider = slider;
-
-        this.parameters = $.extend({
-            duration: 2000
-        }, parameters);
-
-        this.orientationchange();
-
-        window.addEventListener('orientationchange', $.proxy(this.orientationchange, this));
-
-        window.addEventListener("deviceorientation", $.proxy(this.handleOrientation, this), true);
-
-        slider.controls.tilt = this;
-    }
-
-    SmartSliderControlTilt.prototype.orientationchange = function () {
-        switch (window.orientation) {
-            case -90:
-            case 90:
-                this.parseEvent = SmartSliderControlTilt.prototype.parseEventHorizontalLandscape;
-                break;
-            default:
-                this.parseEvent = SmartSliderControlTilt.prototype.parseEventHorizontal;
-                break;
-        }
-    };
-
-    SmartSliderControlTilt.prototype.clearTimeout = function () {
-        this.timeout = null;
-    };
-
-    SmartSliderControlTilt.prototype.handleOrientation = function (e) {
-        if (this.timeout == null && this.parseEvent.call(this, e)) {
-            this.timeout = setTimeout($.proxy(this.clearTimeout, this), this.parameters.duration);
-
             e.preventDefault();
+
+            this.preventRepeat(e);
         }
     };
 
-    SmartSliderControlTilt.prototype.parseEventHorizontal = function (e) {
-        if (e.gamma > 10) { // right tilt
-            this.slider.next();
-            return true;
-        } else if (e.gamma < -10) { // left tilt
-            this.slider.previous();
-            return true;
+    SmartSliderControlMouseWheel.prototype.preventRepeat = function () {
+        if (this.preventScroll !== false) {
+            clearTimeout(this.preventScroll);
         }
-        return false;
+        this.preventScroll = setTimeout($.proxy(function () {
+            this.preventScroll = false;
+            if (this.preventScrollGlobal !== false) {
+                clearTimeout(this.preventScrollGlobal);
+                this.preventScrollGlobal = false;
+            }
+        }, this), 200);
     };
 
-    SmartSliderControlTilt.prototype.parseEventHorizontalLandscape = function (e) {
-        if (e.beta < -10) { // right tilt
-            this.slider.next();
-            return true;
-        } else if (e.beta > 10) { // left tilt
-            this.slider.previous();
-            return true;
+    SmartSliderControlMouseWheel.prototype.preventGlobal = function () {
+        if (this.preventScrollGlobal !== false) {
+            clearTimeout(this.preventScrollGlobal);
         }
-        return false;
+        this.preventScrollGlobal = setTimeout($.proxy(function () {
+            if (this.preventScroll !== false) {
+                clearTimeout(this.preventScroll);
+            }
+            this.preventScroll = false;
+        }, this), 2000);
     };
 
-    return SmartSliderControlTilt;
+    return SmartSliderControlMouseWheel;
 });
 N2D('SmartSliderControlTouch', function ($, undefined) {
     "use strict";
 
-    var pointer = window.navigator.pointerEnabled || window.navigator.msPointerEnabled,
-        hadDirection = false,
-        preventMultipleTap = false;
-
     /**
      * @memberOf N2Classes
      *
      * @param slider
-     * @param _direction
-     * @param parameters
      * @constructor
+     * @abstract
      */
-    function SmartSliderControlTouch(slider, _direction, parameters) {
-        this.currentAnimation = null;
+    function SmartSliderControlTouch(slider) {
         this.slider = slider;
+
+        this.minDistance = 10;
+
+        /**
+         * true if the drag will update the progress of the animation during interaction
+         * false if the drag translated into swipe at the end of the interaction
+         * @type {boolean}
+         */
+        this.interactiveDrag = true;
+
+        this.preventMultipleTap = false;
 
         this._animation = slider.mainAnimation;
 
-        this.parameters = $.extend({
-            fallbackToMouseEvents: true
-        }, parameters);
-
         this.swipeElement = this.slider.sliderElement.find('> .n2-ss-swipe-element');
 
-        if (_direction == 'vertical') {
-            this.setVertical();
-        } else if (_direction == 'horizontal') {
-            this.setHorizontal();
-        }
-
-        var initTouch = $.proxy(function () {
-            var that = this;
-            if (this._animation.isNoAnimation) {
-                N2Classes.EventBurrito(this.swipeElement.get(0), {
-                    mouse: this.parameters.fallbackToMouseEvents,
-                    axis: _direction == 'horizontal' ? 'x' : 'y',
-                    start: function () {
-                        hadDirection = false;
-                    },
-                    move: function (event, start, diff, speed, isRealScrolling) {
-                        var direction = that._direction.measure(diff);
-                        if (!isRealScrolling && direction != 'unknown' && that.currentAnimation === null) {
-
-                            if (that._animation.state != 'ended') {
-                                // skip the event as the current animation is still playing
-                                return false;
-                            }
-                            that.distance = [0];
-                            that.swipeElement.addClass('n2-grabbing');
-
-                            that.currentAnimation = {
-                                direction: direction
-                            };
-                            var isChangePossible = that.slider.isChangePossible(that._direction[direction]);
-                            if (!isChangePossible) {
-                                that.currentAnimation = null;
-                                return false;
-                            }
-                        }
-
-                        if (that.currentAnimation) {
-                            var realDistance = that._direction.get(diff, that.currentAnimation.direction);
-                            that.logDistance(realDistance);
-                            if ((hadDirection || Math.abs(realDistance) > that._direction.minDistance) && event.cancelable) {
-                                hadDirection = true;
-                                return true;
-                            }
-                        }
-                        return false;
-                    },
-                    end: function (event, start, diff, speed, isRealScrolling) {
-                        if (that.currentAnimation !== null) {
-                            var targetDirection = isRealScrolling ? 0 : that.measureRealDirection();
-                            if (targetDirection) {
-                                that.slider[that._direction[that.currentAnimation.direction]]();
-                            }
-
-                            that.swipeElement.removeClass('n2-grabbing');
-                            that.currentAnimation = null;
-                        }
-
-                        if (Math.abs(diff.x) < 10 && Math.abs(diff.y) < 10) {
-                            that.onTap(event);
-                        } else {
-                            nextend.preventClick();
-                        }
-                    }
-                });
-            } else {
-                N2Classes.EventBurrito(this.swipeElement.get(0), {
-                    mouse: this.parameters.fallbackToMouseEvents,
-                    axis: _direction == 'horizontal' ? 'x' : 'y',
-                    start: function (event, start) {
-                        hadDirection = false;
-                    },
-                    move: function (event, start, diff, speed, isRealScrolling) {
-                        var direction = that._direction.measure(diff);
-                        if (!isRealScrolling && direction != 'unknown' && that.currentAnimation === null) {
-
-                            if (that._animation.state != 'ended') {
-                                // skip the event as the current animation is still playing
-                                return false;
-                            }
-                            that.distance = [0];
-                            that.swipeElement.addClass('n2-grabbing');
-
-                            // Force the main animation into touch mode horizontal/vertical
-                            that._animation.setTouch(that._direction.axis);
-
-                            that.currentAnimation = {
-                                direction: direction,
-                                percent: 0
-                            };
-                            var isChangePossible = that.slider[that._direction[direction]](false);
-                            if (!isChangePossible) {
-                                that._animation.setTouch(false);
-                                that.currentAnimation = null;
-                                return false;
-                            }
-                        }
-
-                        if (that.currentAnimation) {
-                            var realDistance = that._direction.get(diff, that.currentAnimation.direction);
-                            that.logDistance(realDistance);
-                            if (that.currentAnimation.percent < 1) {
-                                var percent = Math.max(-0.99999, Math.min(0.99999, realDistance / that.slider.dimensions.slider[that._property]));
-                                that.currentAnimation.percent = percent;
-                                that._animation.setTouchProgress(percent);
-                            }
-                            if ((hadDirection || Math.abs(realDistance) > that._direction.minDistance) && event.cancelable) {
-                                hadDirection = true;
-                                return true;
-                            }
-                        }
-                        return false;
-                    },
-                    end: function (event, start, diff, speed, isRealScrolling) {
-                        if (that.currentAnimation !== null) {
-                            var targetDirection = isRealScrolling ? 0 : that.measureRealDirection();
-                            var progress = that._animation.timeline.progress();
-                            if (progress != 1) {
-                                that._animation.setTouchEnd(targetDirection, that.currentAnimation.percent, diff.time);
-                            }
-                            that.swipeElement.removeClass('n2-grabbing');
-
-                            // Switch back the animation into the original mode when our touch is ended
-                            that._animation.setTouch(false);
-                            that.currentAnimation = null;
-                        }
-
-                        if (Math.abs(diff.x) < 10 && Math.abs(diff.y) < 10) {
-                            that.onTap(event);
-                        } else {
-                            nextend.preventClick();
-                        }
-                    }
-                });
-            }
-        }, this);
+        this.$window = $(window);
 
         if (navigator.userAgent.toLowerCase().indexOf("android") > -1) {
             var parent = this.swipeElement.parent();
-            if (parent.css('opacity') != 1) {
-                this.swipeElement.parent().one('transitionend', initTouch);
+            if (parent.css('opacity') !== "1") {
+                this.swipeElement.parent().one('transitionend', $.proxy(this.initTouch, this));
             } else {
-                initTouch();
+                this.initTouch();
             }
         } else {
-            initTouch();
+            this.initTouch();
         }
 
-        if (!this.parameters.fallbackToMouseEvents) {
-            this.swipeElement.on('click', $.proxy(this.onTap, this));
-        }
+        this.slider.sliderElement.on('sliderChangeCurrentSlide', $.proxy(this.updatePanDirections, this));
 
-        if (this.parameters.fallbackToMouseEvents) {
-            this.swipeElement.addClass('n2-grab');
-        }
+        this.swipeElement.addClass('n2-grab');
 
         slider.controls.touch = this;
+    }
+
+    SmartSliderControlTouch.prototype.initTouch = function () {
+        if (this._animation.isNoAnimation) {
+            this.interactiveDrag = false;
+        }
+
+        this.eventBurrito = N2Classes.EventBurrito(this.swipeElement.get(0), {
+            mouse: true,
+            axis: this.axis === 'horizontal' ? 'x' : 'y',
+            start: $.proxy(this._start, this),
+            move: $.proxy(this._move, this),
+            end: $.proxy(this._end, this)
+        });
+
+        this.updatePanDirections();
+
+        this.cancelKineticScroll = $.proxy(function () {
+            this.kineticScrollCancelled = true;
+        }, this);
     };
 
-    SmartSliderControlTouch.prototype.setHorizontal = function () {
+    SmartSliderControlTouch.prototype._start = function (event) {
 
-        this._property = 'width';
+        this.swipeElement.addClass('n2-grabbing');
 
-        this._direction = {
-            left: n2const.rtl.next,
-            right: n2const.rtl.previous,
-            up: null,
-            down: null,
-            axis: 'horizontal',
-            minDistance: 10,
-            measure: function (diff) {
-                if ((!hadDirection && Math.abs(diff.x) < 10) || diff.x == 0 || Math.abs(diff.x) < Math.abs(diff.y)) return 'unknown';
-                return diff.x < 0 ? 'left' : 'right';
-            },
-            get: function (diff, direction) {
-                if (direction == 'left') {
-                    return -diff.x;
-                }
-                return diff.x;
-            }
+        this.currentInteraction = {
+            type: event.type === 'pointerdown' ? 'pointer' : (event.type === 'touchstart' ? 'touch' : 'mouse'),
+            state: $.extend({}, this.state),
+            action: 'unknown',
+            distance: [],
+            distanceY: [],
+            percent: 0,
+            progress: 0,
+            scrollTop: this.$window.scrollTop(),
+            animationStartDirection: 'unknown',
+            hadDirection: false
         };
-
-        if (pointer) {
-            this.swipeElement.css('-ms-touch-action', 'pan-y');
-            this.swipeElement.css('touch-action', 'pan-y');
-        }
+        this.logDistance(0, 0);
     };
 
-    SmartSliderControlTouch.prototype.setVertical = function () {
+    SmartSliderControlTouch.prototype._move = function (event, start, diff, isRealScrolling) {
+        if (!isRealScrolling || this.currentInteraction.action !== 'unknown') {
 
-        this._property = 'height';
+            this.currentInteraction.diection = this.measure(diff);
 
-        this._direction = {
-            left: null,
-            right: null,
-            up: 'next',
-            down: 'previous',
-            axis: 'vertical',
-            minDistance: 1,
-            measure: function (diff) {
-                if ((!hadDirection && Math.abs(diff.y) < 1) || diff.y == 0 || Math.abs(diff.y) < Math.abs(diff.x)) return 'unknown';
-                return diff.y < 0 ? 'up' : 'down';
-            },
-            get: function (diff, direction) {
-                if (direction == 'up') {
-                    return -diff.y;
+            var distance = this.get(diff);
+
+            if (this.currentInteraction.hadDirection || Math.abs(distance) > this.minDistance || Math.abs(diff.y) > this.minDistance) {
+                this.logDistance(distance, diff.y);
+                if (this.currentInteraction.percent < 1) {
+                    this.setTouchProgress(distance, diff.y);
                 }
-                return diff.y;
-            }
-        };
 
-        if (pointer) {
-            this.swipeElement.css('-ms-touch-action', 'pan-x');
-            this.swipeElement.css('touch-action', 'pan-x');
+                if (this.currentInteraction.type === 'touch' && event.cancelable && this.currentInteraction.action === 'switch') {
+                    this.currentInteraction.hadDirection = true;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    };
+
+    SmartSliderControlTouch.prototype._end = function (event, start, diff, isRealScrolling) {
+        if (this.currentInteraction.action === 'switch') {
+            var hasDirection = isRealScrolling ? 0 : this.measureRealDirection();
+
+            if (this.interactiveDrag) {
+                var progress = this._animation.timeline.progress();
+                if (progress < 1) {
+                    this._animation.setTouchEnd(hasDirection, this.currentInteraction.progress, diff.time);
+                }
+
+                // Switch back the animation into the original mode when our touch is ended
+                this._animation.setTouch(false);
+            } else {
+                if (hasDirection) {
+                    this.callAction(this.currentInteraction.animationStartDirection)
+                }
+            }
+        }
+
+        this.onEnd();
+
+        delete this.currentInteraction;
+
+        if (Math.abs(diff.x) < 10 && Math.abs(diff.y) < 10) {
+            this.onTap(event);
+        } else {
+            nextend.preventClick();
+        }
+
+        this.swipeElement.removeClass('n2-grabbing');
+    };
+
+    SmartSliderControlTouch.prototype.onEnd = function () {
+
+        if (this.currentInteraction.action === 'scroll' && this.currentInteraction.type === 'pointer') {
+            var firstDistance = this.currentInteraction.distanceY[0],
+                lastDistance = this.currentInteraction.distanceY[this.currentInteraction.distanceY.length - 1];
+
+            /**
+             * Simple kinetic scroll implementation
+             */
+            var amplitude = (firstDistance.d - lastDistance.d) / (lastDistance.t - firstDistance.t) * 10,
+                timestamp = Date.now(),
+                kineticScroll = $.proxy(function () {
+                    requestAnimationFrame($.proxy(function () {
+                        var elapsed, delta;
+                        if (!this.kineticScrollCancelled && amplitude) {
+                            elapsed = Date.now() - timestamp;
+                            delta = amplitude * Math.exp(-elapsed / 325);
+                            if (delta > 1 || delta < -1) {
+                                this.$window.scrollTop(this.$window.scrollTop() + delta);
+                                kineticScroll();
+
+                                return;
+                            }
+                        }
+
+                        delete this.kineticScrollCancelled;
+                        document.removeEventListener('pointerdown', this.cancelKineticScroll);
+                    }, this));
+                }, this);
+
+            this.kineticScrollCancelled = false;
+            kineticScroll();
+            document.addEventListener('pointerdown', this.cancelKineticScroll);
         }
     };
 
-    SmartSliderControlTouch.prototype.logDistance = function (realDistance) {
-        if (this.distance.length > 3) {
-            this.distance.shift();
+    SmartSliderControlTouch.prototype.setTouchProgress = function (distance, distanceY) {
+
+        this.recognizeSwitchInteraction();
+
+        var progress,
+            percent = this.getPercent(distance);
+        this.currentInteraction.percent = percent;
+
+        if (this.currentInteraction.action === 'switch') {
+            if (this.interactiveDrag) {
+                switch (this.currentInteraction.animationStartDirection) {
+                    case 'up':
+                        progress = percent * -1;
+                        break;
+                    case 'down':
+                        progress = percent;
+                        break;
+                    case 'left':
+                        progress = percent * -1;
+                        break;
+                    case 'right':
+                        progress = percent;
+                        break;
+                }
+
+                this.currentInteraction.progress = progress;
+
+                this._animation.setTouchProgress(progress);
+            }
+        } else {
+            this.startScrollInteraction(distanceY);
         }
-        this.distance.push(realDistance);
+    };
+
+    SmartSliderControlTouch.prototype.startScrollInteraction = function (distanceY) {
+
+        /**
+         * EDGE: pan-x and pan-y does not work with Precision Touchpad, so we must use touch-action:none
+         * With touch-action:none, user is not able to scroll over the slider, so we must simulate kinetic scroll
+         * @see https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/20733813/
+         */
+        if (this.axis === 'vertical' || n2const.isEdge) {
+
+            /**
+             * Scroll is not allowed in fullscreen mode
+             */
+            if (!this.slider.controlFullscreen.isFullScreen) {
+
+                this.currentInteraction.action = 'scroll';
+
+                if (this.currentInteraction.type === 'pointer') {
+                    /**
+                     * Pointer events do not scroll if the touch-action CSS property defined which
+                     * is required for Edge.
+                     * @see https://blogs.windows.com/msedgedev/2017/12/07/better-precision-touchpad-experience-ptp-pointer-events/
+                     */
+                    this.$window.scrollTop(Math.max(0, this.currentInteraction.scrollTop - distanceY));
+                }
+            }
+        }
+    };
+
+    SmartSliderControlTouch.prototype.recognizeSwitchInteraction = function () {
+        if (this._animation.state === 'ended' && this.currentInteraction.action === 'unknown') {
+            var direction = this.currentInteraction.diection;
+            if (direction !== 'unknown') {
+                /**
+                 * This direction is allowed to change slides
+                 */
+                if (this.currentInteraction.state[direction]) {
+
+                    this.currentInteraction.animationStartDirection = direction;
+
+                    if (this.interactiveDrag) {
+                        // Force the main animation into touch mode horizontal/vertical
+                        this._animation.setTouch(this.axis);
+
+                        var isChangePossible = this.callAction(direction, false);
+                        if (!isChangePossible) {
+                            // Prevent scroll enabled, but carousel not. Do not allow to scroll
+                        }
+                    }
+
+                    this.currentInteraction.action = 'switch';
+                }
+            }
+        }
+    };
+
+    SmartSliderControlTouch.prototype.logDistance = function (realDistance, realDistanceY) {
+        if (this.currentInteraction.distance.length > 3) {
+            this.currentInteraction.distance.shift();
+            this.currentInteraction.distanceY.shift();
+        }
+
+        this.currentInteraction.distance.push({
+            d: realDistance,
+            t: Date.now()
+        });
+
+        this.currentInteraction.distanceY.push({
+            d: realDistanceY,
+            t: Date.now()
+        });
     };
 
     SmartSliderControlTouch.prototype.measureRealDirection = function () {
-        var firstValue = this.distance[0],
-            lastValue = this.distance[this.distance.length - 1];
+        var firstDistance = this.currentInteraction.distance[0],
+            lastDistance = this.currentInteraction.distance[this.currentInteraction.distance.length - 1];
 
-        if ((lastValue >= 0 && firstValue > lastValue) || (lastValue < 0 && firstValue < lastValue)) {
+        if ((lastDistance.d >= 0 && firstDistance.d > lastDistance.d) || (lastDistance.d < 0 && firstDistance.d < lastDistance.d)) {
             return 0;
         }
         return 1;
     };
 
     SmartSliderControlTouch.prototype.onTap = function (e) {
-        if (!preventMultipleTap) {
+        if (!this.preventMultipleTap) {
             $(e.target).trigger('n2click');
-            preventMultipleTap = true;
-            setTimeout(function () {
-                preventMultipleTap = false;
-            }, 500);
+            this.preventMultipleTap = true;
+            setTimeout($.proxy(function () {
+                this.preventMultipleTap = false;
+            }, this), 500);
+        }
+    };
+
+    /**
+     * @abstract
+     */
+    SmartSliderControlTouch.prototype.updatePanDirections = function () {
+
+    };
+
+    SmartSliderControlTouch.prototype.setState = function (newStates, doAction) {
+        if (typeof arguments[0] !== 'object') {
+            newStates = {};
+            newStates[arguments[0]] = arguments[1];
+            doAction = arguments[2];
+        }
+
+        var isChanged = false;
+        for (var k in newStates) {
+            if (this.state[k] !== newStates[k]) {
+                this.state[k] = newStates[k];
+                isChanged = true;
+            }
+        }
+
+        if (isChanged && doAction && this.eventBurrito.supportsPointerEvents) {
+
+            this.syncTouchAction();
         }
     };
 
     return SmartSliderControlTouch;
+});
+N2D('SmartSliderControlTouchHorizontal', 'SmartSliderControlTouch', function ($, undefined) {
+    "use strict";
+
+    /**
+     * @memberOf N2Classes
+     *
+     * @constructor
+     * @augments N2Classes.SmartSliderControlTouch
+     */
+    function SmartSliderControlTouchHorizontal() {
+
+        this.state = {
+            left: false,
+            right: false
+        };
+
+        this.axis = 'horizontal';
+
+        N2Classes.SmartSliderControlTouch.prototype.constructor.apply(this, arguments);
+    }
+
+    SmartSliderControlTouchHorizontal.prototype = Object.create(N2Classes.SmartSliderControlTouch.prototype);
+    SmartSliderControlTouchHorizontal.prototype.constructor = SmartSliderControlTouchHorizontal;
+
+    SmartSliderControlTouchHorizontal.prototype.callAction = function (direction, isSystem) {
+        switch (direction) {
+            case 'left':
+                return this.slider[n2const.rtl.next].call(this.slider, isSystem);
+            case 'right':
+                return this.slider[n2const.rtl.previous].call(this.slider, isSystem);
+        }
+
+        return false;
+    };
+
+    SmartSliderControlTouchHorizontal.prototype.measure = function (diff) {
+        if ((!this.currentInteraction.hadDirection && Math.abs(diff.x) < 10) || diff.x === 0 || Math.abs(diff.x) < Math.abs(diff.y)) return 'unknown';
+        return diff.x < 0 ? 'left' : 'right';
+    };
+
+    SmartSliderControlTouchHorizontal.prototype.get = function (diff) {
+        return diff.x;
+    };
+
+    SmartSliderControlTouchHorizontal.prototype.getPercent = function (distance) {
+        return Math.max(-0.99999, Math.min(0.99999, distance / this.slider.dimensions.slider.width))
+    };
+
+    SmartSliderControlTouchHorizontal.prototype.updatePanDirections = function () {
+        var currentSlideIndex = this.slider.currentSlide.index,
+            nextSlideAllowed = currentSlideIndex + 1 < this.slider.slides.length,
+            previousSlideAllowed = currentSlideIndex - 1 >= 0;
+
+        if (this.slider.parameters.carousel) {
+            nextSlideAllowed = true;
+            previousSlideAllowed = true;
+        }
+
+        this.setState({
+            right: previousSlideAllowed,
+            left: nextSlideAllowed
+        }, true);
+    };
+
+    SmartSliderControlTouchHorizontal.prototype.syncTouchAction = function () {
+        var touchAction = {
+            'pan-y': false,
+            'none': false
+        };
+
+        /**
+         * EDGE: pan-y does not work with Precision Touchpad. Must use none
+         * @see https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/20733813/
+         */
+        if (n2const.isEdge) {
+            touchAction.none = true;
+        } else {
+            if (this.state.left) {
+                touchAction['pan-y'] = true;
+            }
+
+            if (this.state.right) {
+                touchAction['pan-y'] = true;
+            }
+        }
+
+        var touchActions = [];
+        for (var k in touchAction) {
+            if (touchAction[k]) {
+                touchActions.push(k);
+            }
+        }
+
+        this.swipeElement.css('touch-action', touchActions.join(' '));
+    };
+
+
+    return SmartSliderControlTouchHorizontal;
+});
+N2D('SmartSliderControlTouchVertical', 'SmartSliderControlTouch', function ($, undefined) {
+    "use strict";
+
+    /**
+     * @memberOf N2Classes
+     *
+     * @constructor
+     * @augments N2Classes.SmartSliderControlTouch
+     */
+    function SmartSliderControlTouchVertical() {
+
+        this.state = {
+            up: false,
+            down: false
+        };
+
+        this.action = {
+            up: 'next',
+            down: 'previous'
+        };
+
+        this.axis = 'vertical';
+
+        N2Classes.SmartSliderControlTouch.prototype.constructor.apply(this, arguments);
+    }
+
+    SmartSliderControlTouchVertical.prototype = Object.create(N2Classes.SmartSliderControlTouch.prototype);
+    SmartSliderControlTouchVertical.prototype.constructor = SmartSliderControlTouchVertical;
+
+    SmartSliderControlTouchVertical.prototype.callAction = function (direction, isSystem) {
+        switch (direction) {
+            case 'up':
+                return this.slider.next.call(this.slider, isSystem);
+            case 'down':
+                return this.slider.previous.call(this.slider, isSystem);
+        }
+
+        return false;
+    };
+
+    SmartSliderControlTouchVertical.prototype.measure = function (diff) {
+        if ((!this.currentInteraction.hadDirection && Math.abs(diff.y) < 1) || diff.y == 0 || Math.abs(diff.y) < Math.abs(diff.x)) return 'unknown';
+        return diff.y < 0 ? 'up' : 'down';
+    };
+
+    SmartSliderControlTouchVertical.prototype.get = function (diff) {
+        return diff.y;
+    };
+
+    SmartSliderControlTouchVertical.prototype.getPercent = function (distance) {
+        return Math.max(-0.99999, Math.min(0.99999, distance / this.slider.dimensions.slider.height))
+    };
+
+    SmartSliderControlTouchVertical.prototype.updatePanDirections = function () {
+
+        var isPreviousCarousel = this.slider.isChangeCarousel('previous');
+
+        this.setState({
+            down: !this.slider.isChangeCarousel('previous') || !this.slider.parameters.controls.blockCarouselInteraction,
+            up: !this.slider.isChangeCarousel('next') || !this.slider.parameters.controls.blockCarouselInteraction
+        }, true);
+    };
+
+    SmartSliderControlTouchVertical.prototype.syncTouchAction = function () {
+        var touchAction = {
+            'pan-x': false,
+            'none': false
+        };
+
+        /**
+         * EDGE: pan-x does not work with Precision Touchpad. Must use none
+         * @see https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/20733813/
+         */
+        if (n2const.isEdge) {
+            touchAction.none = true;
+        } else {
+            if (this.state.up) {
+                touchAction['pan-x'] = true;
+            }
+
+            if (this.state.down) {
+                touchAction['pan-x'] = true;
+            }
+        }
+
+        var touchActions = [];
+        for (var k in touchAction) {
+            if (touchAction[k]) {
+                touchActions.push(k);
+            }
+        }
+
+        this.swipeElement.css('touch-action', touchActions.join(' '));
+    };
+
+    SmartSliderControlTouchVertical.prototype._start = function (event) {
+
+        this.slider.blockCarousel = true;
+
+        N2Classes.SmartSliderControlTouch.prototype._start.apply(this, arguments);
+    };
+
+    SmartSliderControlTouchVertical.prototype.onEnd = function (event) {
+
+        N2Classes.SmartSliderControlTouch.prototype.onEnd.apply(this, arguments);
+
+        this.slider.blockCarousel = false;
+    };
+
+
+    return SmartSliderControlTouchVertical;
+});
+N2D('SmartSliderSlideBackgroundColor', function ($, undefined) {
+
+    /**
+     * @memberOf N2Classes
+     *
+     * @param {N2Classes.SmartSliderSlideBackground} background
+     * @param $el
+     * @constructor
+     */
+    function SmartSliderSlideBackgroundColor(background, $el) {
+        this.$el = $el;
+    }
+
+    SmartSliderSlideBackgroundColor.prototype.getLoadedDeferred = function () {
+        return true;
+    };
+
+    return SmartSliderSlideBackgroundColor;
+});
+N2D('SmartSliderSlideBackgroundImage', function ($, undefined) {
+
+    /**
+     * @memberOf N2Classes
+     *
+     * @param {N2Classes.FrontendSliderSlide} slide
+     * @param {N2Classes.SmartSliderBackgrounds} manager
+     * @param {N2Classes.SmartSliderSlideBackground} background
+     * @param $background
+     * @constructor
+     */
+    function SmartSliderSlideBackgroundImage(slide, manager, background, $background) {
+
+        this.loadStarted = false;
+        this.loadAllowed = false;
+
+        this.slide = slide;
+        this.manager = manager;
+        this.background = background;
+
+        this.deferred = $.Deferred();
+        this.$background = $background;
+
+        this.blur = $background.data('blur');
+
+        if (background.mode === 'blurfit') {
+            if (window.n2FilterProperty) {
+                this.$background = this.$background.add(this.$background.clone()
+                    .insertAfter(this.$background));
+                this.$background.first().css({
+                    margin: '-' + (7 * 2) + 'px',
+                    padding: (7 * 2) + 'px'
+                }).css(window.n2FilterProperty, 'blur(' + 7 + 'px)');
+            } else {
+                background.element.attr('data-mode', 'fill');
+                background.mode = 'fill';
+            }
+        }
+
+        if (window.n2FilterProperty) {
+            if (this.blur > 0) {
+                this.$background.last().css({
+                    margin: '-' + (this.blur * 2) + 'px',
+                    padding: (this.blur * 2) + 'px'
+                }).css(window.n2FilterProperty, 'blur(' + this.blur + 'px)');
+            } else {
+                this.$background.last().css({
+                    margin: '',
+                    padding: ''
+                }).css(window.n2FilterProperty, '');
+            }
+        }
+
+        if (n2const.isWaybackMachine()) {
+            this.mobileSrc = this.tabletSrc = this.desktopSrc = $background.data('desktop');
+        } else {
+            this.desktopSrc = $background.data('desktop') || '';
+            this.tabletSrc = $background.data('tablet') || '';
+            this.mobileSrc = $background.data('mobile') || '';
+
+            if (n2const.isRetina) {
+                var retina = $background.data('desktop-retina');
+                if (retina) {
+                    this.desktopSrc = retina;
+                }
+                retina = $background.data('tablet-retina');
+                if (retina) {
+                    this.tabletSrc = retina;
+                }
+                retina = $background.data('mobile-retina');
+                if (retina) {
+                    this.mobileSrc = retina;
+                }
+            }
+        }
+    }
+
+    SmartSliderSlideBackgroundImage.prototype.getLoadedDeferred = function () {
+        return this.deferred;
+    };
+
+    SmartSliderSlideBackgroundImage.prototype.preLoad = function () {
+        this.loadAllowed = true;
+
+        this.manager.deviceDeferred.done($.proxy(function () {
+            this.updateBackgroundToDevice(this.manager.device);
+
+            this.waitForImage();
+        }, this));
+    };
+
+    SmartSliderSlideBackgroundImage.prototype.waitForImage = function () {
+        this.$background.n2imagesLoaded({background: true}, $.proxy(function (e) {
+            /**
+             * The injected element must have a background image. If some other script changed it for lazy loading
+             * There will be no images, so we know that we have to try again to check for load later.
+             * Swift Performance does this with lazyload-background-images option.
+             */
+            if (e.images.length > 0) {
+                var img = e.images[0].img;
+                this.width = img.naturalWidth;
+                this.height = img.naturalHeight;
+
+                switch (this.background.mode) {
+                    case 'tile':
+                    case 'center':
+                        if (n2const.devicePixelRatio > 1) {
+                            this.$background.css('background-size', (this.width / n2const.devicePixelRatio) + 'px ' + (this.height / n2const.devicePixelRatio) + 'px');
+                        }
+                        break;
+                }
+
+                this.deferred.resolve();
+            } else {
+                setTimeout($.proxy(this.waitForImage, this), 100);
+            }
+        }, this));
+    };
+
+    SmartSliderSlideBackgroundImage.prototype.updateBackgroundToDevice = function (device) {
+        var newSrc = this.desktopSrc;
+        if (device.device === 'mobile') {
+            if (this.mobileSrc) {
+                newSrc = this.mobileSrc;
+            } else if (this.tabletSrc) {
+                newSrc = this.tabletSrc;
+            }
+        } else if (device.device === 'tablet') {
+            if (this.tabletSrc) {
+                newSrc = this.tabletSrc;
+            }
+        }
+        if (newSrc) {
+            this.setSrc(newSrc);
+        } else {
+            this.setSrc('');
+        }
+    }
+
+    SmartSliderSlideBackgroundImage.prototype.setSrc = function (src) {
+        if (this.loadAllowed) {
+            if (src !== this.currentSrc) {
+                if (src === '') {
+                    this.$background.css('background-image', '');
+                } else {
+                    this.$background.css('background-image', 'url("' + src + '")');
+                }
+                this.currentSrc = src;
+            }
+        }
+    };
+
+    SmartSliderSlideBackgroundImage.prototype.fadeOut = function () {
+        NextendTween.to(this.$background, 0.3, {
+            opacity: 0
+        });
+    };
+
+    return SmartSliderSlideBackgroundImage;
 });
 N2D('SmartSliderSlideBackground', function ($, undefined) {
 
@@ -3188,15 +3749,12 @@ N2D('SmartSliderSlideBackground', function ($, undefined) {
         this.currentSrc = '';
 
         this.mode = element.data('mode');
-        if (this.mode === 'fixed' && ((n2const.isPhone && !slide.slider.parameters['background.parallax.mobile']) || (n2const.isTablet && !slide.slider.parameters['background.parallax.tablet']))) {
-            this.mode = 'fill';
-        }
 
         this.opacity = element.data('opacity');
 
-        this.$image = this.element.find('img');
-        if (this.$image.length) {
-            this.elements.image = new N2Classes[this.types.image](slide, manager, this, this.$image);
+        var $image = this.element.find('.n2-ss-slide-background-image');
+        if ($image.length) {
+            this.elements.image = new N2Classes[this.types.image](slide, manager, this, $image);
         }
 
         var $color = this.element.find('.n2-ss-slide-background-color');
@@ -3259,6 +3817,10 @@ N2D('SmartSliderSlideBackground', function ($, undefined) {
         return this.elements.video;
     };
 
+    SmartSliderSlideBackground.prototype.hasBackground = function () {
+        return this.elements.color || this.elements.image || this.elements.video;
+    };
+
     SmartSliderSlideBackground.prototype.updateBackgroundToDevice = function (device) {
         if (this.hasImage()) {
             this.elements.image.updateBackgroundToDevice(device);
@@ -3272,7 +3834,7 @@ N2D('FrontendComponent', function ($, undefined) {
     /**
      * @memberOf N2Classes
      *
-     * @param {FrontendComponentSlideAbstract} slide
+     * @param {N2Classes.FrontendComponentSlideAbstract} slide
      * @param parent
      * @param $layer
      * @param $children
@@ -3286,6 +3848,13 @@ N2D('FrontendComponent', function ($, undefined) {
         this.slide = slide;
         this.parent = parent;
         this.$layer = $layer.data('layer', this);
+
+        this.skipSelfAnimation = false;
+
+        this.stateCBs = [];
+        this.state = {
+            InComplete: false
+        };
 
         var $mask = this.$layer.find('> .n2-ss-layer-mask');
         if ($mask.length) {
@@ -3339,6 +3908,18 @@ N2D('FrontendComponent', function ($, undefined) {
         }
     }
 
+    FrontendComponent.prototype.setState = function (name, value) {
+        this.state[name] = value;
+        for (var i = 0; i < this.stateCBs.length; i++) {
+            this.stateCBs[i].call(this, this.state);
+        }
+    };
+
+    FrontendComponent.prototype.addStateCallback = function (cb) {
+        this.stateCBs.push(cb);
+        cb.call(this, this.state);
+    };
+
     FrontendComponent.prototype.refreshBaseSize = function (fontSize) {
         if (this.isAdaptiveFont) {
             this.baseSize = (16 * fontSize / 100);
@@ -3372,9 +3953,11 @@ N2D('FrontendComponent', function ($, undefined) {
         if (wasVisible && !this.isVisible) {
             this.$layer.data('shows', 0);
             this.$layer.css('display', 'none');
+            this.$layer.triggerHandler('visibilityChange', [0]);
         } else if (!wasVisible && this.isVisible) {
             this.$layer.data('shows', 1);
             this.$layer.css('display', '');
+            this.$layer.triggerHandler('visibilityChange', [1]);
         }
 
         if (this.isVisible) {
@@ -3424,6 +4007,10 @@ N2D('FrontendComponent', function ($, undefined) {
 
     FrontendComponent.prototype.get = function (property) {
         return this.$layer.data(property);
+    };
+
+    FrontendComponent.prototype.hasLayerAnimation = function () {
+        return this.animationManager !== undefined;
     };
 
     FrontendComponent.prototype.getParallaxNodes = function () {
@@ -3586,6 +4173,26 @@ N2D('FrontendSliderSlide', ['FrontendComponentSlideAbstract'], function ($, unde
         return this.background.hasVideo();
     };
 
+    FrontendSliderSlide.prototype.getTitle = function () {
+        return this.$element.data('title');
+    };
+
+    FrontendSliderSlide.prototype.getDescription = function () {
+        return this.$element.data('description');
+    };
+
+    FrontendSliderSlide.prototype.getThumbnail = function () {
+        return this.$element.data('thumbnail');
+    };
+
+    FrontendSliderSlide.prototype.getThumbnailType = function () {
+        return this.$element.data('thumbnail-type');
+    };
+
+    FrontendSliderSlide.prototype.hasLink = function () {
+        return !!this.$element.data('haslink');
+    };
+
     return FrontendSliderSlide;
 });
 N2D('FrontendComponentSlideAbstract', ['FrontendComponent'], function ($, undefined) {
@@ -3595,13 +4202,14 @@ N2D('FrontendComponentSlideAbstract', ['FrontendComponent'], function ($, undefi
         INITIALIZED: 0,
         READY_TO_START: 1,
         PLAYING: 2,
-        ENDED: 3
+        ENDED: 3,
+        SUSPENDED: 4
     };
 
     /**
      * @memberOf N2Classes
      *
-     * @param {SmartSliderAbstract} slider
+     * @param {N2Classes.SmartSliderAbstract} slider
      * @param {jQuery} $el
      * @constructor
      * @augments FrontendComponent
@@ -3610,7 +4218,7 @@ N2D('FrontendComponentSlideAbstract', ['FrontendComponent'], function ($, undefi
         this.baseSize = 16;
 
         /**
-         * @type {SmartSliderAbstract}
+         * @type {N2Classes.SmartSliderAbstract}
          */
         this.slider = slider;
 
@@ -3619,6 +4227,8 @@ N2D('FrontendComponentSlideAbstract', ['FrontendComponent'], function ($, undefi
             this.status = SlideStatus.NOT_INITIALIZED;
 
             N2Classes.FrontendComponent.prototype.constructor.call(this, this, this, $el, $el.find('> .n2-ss-layer, > .n2-ss-layer-group'));
+
+            this.skipSelfAnimation = true;
 
             this.slider.sliderElement.on({
                 SliderDeviceOrientation: $.proxy(function (e, modes) {
@@ -3653,9 +4263,6 @@ N2D('FrontendComponentSlideAbstract', ['FrontendComponent'], function ($, undefi
     };
 
     FrontendComponentSlideAbstract.prototype.init = function () {
-
-        if (!this.isCurrentlyEdited()) {
-        }
     };
 
     FrontendComponentSlideAbstract.prototype.refreshBaseSize = function (fontSize) {
@@ -3709,206 +4316,12 @@ N2D('FrontendSliderStaticSlide', ['FrontendComponentSlideAbstract'], function ($
 
     return FrontendSliderStaticSlide;
 });
-N2D('SmartSliderSlideBackgroundColor', function ($, undefined) {
-
-    /**
-     * @memberOf N2Classes
-     *
-     * @param {N2Classes.SmartSliderSlideBackground} background
-     * @param $el
-     * @constructor
-     */
-    function SmartSliderSlideBackgroundColor(background, $el) {
-        this.$el = $el;
-    }
-
-    SmartSliderSlideBackgroundColor.prototype.getLoadedDeferred = function () {
-        return true;
-    };
-
-    return SmartSliderSlideBackgroundColor;
-});
-N2D('SmartSliderSlideBackgroundImage', function ($, undefined) {
-
-    /**
-     * @memberOf N2Classes
-     *
-     * @param {N2Classes.FrontendSliderSlide} slide
-     * @param {N2Classes.SmartSliderBackgrounds} manager
-     * @param {N2Classes.SmartSliderSlideBackground} background
-     * @param $el
-     * @constructor
-     */
-    function SmartSliderSlideBackgroundImage(slide, manager, background, $el) {
-
-        this.loadStarted = false;
-        this.loadAllowed = false;
-
-        this.slide = slide;
-        this.manager = manager;
-        this.background = background;
-
-        this.deferred = $.Deferred();
-
-        this.$el = $el;
-        this.opacity = $el.data('opacity');
-        this.blur = $el.data('blur');
-        this.x = $el.data('x');
-        this.y = $el.data('y');
-
-        $el.css('display', 'none');
-        this.$background = $('<div class="n2-ss-slide-background-image"/>')
-            .css({
-                backgroundPosition: this.x + '% ' + this.y + '%',
-                opacity: this.opacity / 100
-            })
-            .insertAfter($el);
-			
-		
-		if (background.mode === 'blurfit') {
-			if(window.n2FilterProperty){
-				this.$background = this.$background.add(this.$background.clone()
-					.insertAfter(this.$background));
-				this.$background.first().css({
-					margin: '-' + (7 * 2) + 'px',
-					padding: (7 * 2) + 'px'
-				}).css(window.n2FilterProperty, 'blur(' + 7 + 'px)');
-			} else {
-				background.element.attr('data-mode', 'fill');
-				background.mode = 'fill';
-			}
-        }
-
-        if (window.n2FilterProperty) {
-            if (this.blur > 0) {
-                this.$background.last().css({
-                    margin: '-' + (this.blur * 2) + 'px',
-                    padding: (this.blur * 2) + 'px'
-                }).css(window.n2FilterProperty, 'blur(' + this.blur + 'px)');
-            } else {
-                this.$background.last().css({
-                    margin: '',
-                    padding: ''
-                }).css(window.n2FilterProperty, '');
-            }
-        }
-
-        if (background.mode === 'fixed') {
-            this.startFixed();
-        }
-
-        if (n2const.isWaybackMachine()) {
-            this.mobileSrc = this.tabletSrc = this.desktopSrc = $el.attr('src');
-        } else {
-            this.desktopSrc = $el.data('desktop') || '';
-            this.tabletSrc = $el.data('tablet') || '';
-            this.mobileSrc = $el.data('mobile') || '';
-
-            if (n2const.isRetina) {
-                var retina = $el.data('desktop-retina');
-                if (retina) {
-                    this.desktopSrc = retina;
-                }
-                retina = $el.data('tablet-retina');
-                if (retina) {
-                    this.tabletSrc = retina;
-                }
-                retina = $el.data('mobile-retina');
-                if (retina) {
-                    this.mobileSrc = retina;
-                }
-            }
-        }
-    }
-
-    SmartSliderSlideBackgroundImage.prototype.getLoadedDeferred = function () {
-        return this.deferred;
-    };
-
-    SmartSliderSlideBackgroundImage.prototype.preLoad = function () {
-        this.loadAllowed = true;
-
-        this.manager.deviceDeferred.done($.proxy(function () {
-            this.updateBackgroundToDevice(this.manager.device);
-            this.$background.n2imagesLoaded({background: true}, $.proxy(function (e) {
-                var img = e.images[0].img;
-                this.width = img.naturalWidth;
-                this.height = img.naturalHeight;
-
-                this.deferred.resolve();
-            }, this));
-        }, this));
-    };
-
-    SmartSliderSlideBackgroundImage.prototype.updateBackgroundToDevice = function (device) {
-        var newSrc = this.desktopSrc;
-        if (device.device === 'mobile') {
-            if (this.mobileSrc) {
-                newSrc = this.mobileSrc;
-            } else if (this.tabletSrc) {
-                newSrc = this.tabletSrc;
-            }
-        } else if (device.device === 'tablet') {
-            if (this.tabletSrc) {
-                newSrc = this.tabletSrc;
-            }
-        }
-        if (newSrc) {
-            this.setSrc(newSrc);
-        } else {
-            this.setSrc('');
-        }
-    }
-
-    SmartSliderSlideBackgroundImage.prototype.setSrc = function (src) {
-        if (this.loadAllowed) {
-            if (src !== this.currentSrc) {
-                if (src === '') {
-                    this.$background.css('background-image', '');
-                } else {
-                    this.$background.css('background-image', 'url("' + src + '")');
-                }
-                this.currentSrc = src;
-            }
-        }
-    };
-
-    SmartSliderSlideBackgroundImage.prototype.startFixed = function () {
-        if (!n2const.isEdge) {
-            if (this.slide.slider.parameters.allowBGImageAttachmentFixed && !n2const.isIOS) {
-                this.$background.css({
-                    backgroundRepeat: 'repeat',
-                    position: 'relative',
-                    backgroundAttachment: 'fixed'
-                });
-            } else if (!n2const.isIE) {
-                this.slide.slider.startedDeferred.done($.proxy(function () {
-                    N2Classes.FixedBackground.addElement(this.$background, this.background.element);
-                }, this));
-            }
-        }
-    };
-
-    SmartSliderSlideBackgroundImage.prototype.fadeOut = function () {
-        NextendTween.to(this.$background, 0.3, {
-            opacity: 0
-        });
-    };
-
-    return SmartSliderSlideBackgroundImage;
-});
 N2D('FrontendPlacementAbsolute', ['FrontendPlacement'], function ($, undefined) {
 
-    if (/(MSIE\ [0-7]\.\d+)/.test(navigator.userAgent)) {
-        function getPos($element) {
-            return $element.position();
-        }
-    } else {
-        function getPos($element) {
-            return {
-                left: $element.prop('offsetLeft'),
-                top: $element.prop('offsetTop')
-            }
+    function getPos($element) {
+        return {
+            left: $element.prop('offsetLeft'),
+            top: $element.prop('offsetTop')
         }
     }
 
@@ -4293,7 +4706,7 @@ N2D('FrontendComponentContent', ['FrontendComponent'], function ($, undefined) {
      */
     function FrontendComponentContent(slide, parent, $el) {
 
-        this.$content = $el.find('> .n2-ss-section-main-content');
+        this.$content = $el.find('.n2-ss-section-main-content:first');
 
         N2Classes.FrontendComponent.prototype.constructor.call(this, slide, parent, $el, this.$content.find('> .n2-ss-layer'));
     }
@@ -4443,7 +4856,7 @@ N2D('FrontendComponentRow', ['FrontendComponent'], function ($, undefined) {
         }
 
         this.$rowInner.css({
-            width: 'calc(100% + ' + gutterValue + 'px)',
+            width: 'calc(100% + ' + (gutterValue + 1) + 'px)',
             margin: -sideGutterValue + 'px'
         });
     };
@@ -4502,7 +4915,7 @@ N2D('FrontendComponentRow', ['FrontendComponent'], function ($, undefined) {
                     sumWidth += flexLine[j].getWidthPercentage();
                 }
                 for (j = 0; j < flexLine.length; j++) {
-                    flexLine[j].$layer.css('width', 'calc(' + (flexLine[j].getWidthPercentage() / sumWidth * 100) + '% - ' + gutterValue + 'px)');
+                    flexLine[j].$layer.css('width', 'calc(' + (flexLine[j].getWidthPercentage() / sumWidth * 100) + '% - ' + (n2const.isIE || n2const.isEdge ? gutterValue + 1 : gutterValue) + 'px)');
                 }
             }
         } else {
@@ -4534,7 +4947,7 @@ N2D('SmartSliderResponsive', function ($, undefined) {
     /**
      * @memberOf N2Classes
      *
-     * @param {SmartSliderAbstract} slider
+     * @param {N2Classes.SmartSliderAbstract} slider
      * @param parameters
      * @constructor
      */
@@ -4542,7 +4955,16 @@ N2D('SmartSliderResponsive', function ($, undefined) {
         this.disableTransitions = false;
         this.disableTransitionsTimeout = null;
         this.lastClientHeight = 0;
+        this.lastClientHeightTime = 0;
         this.lastOrientation = 0;
+
+        this.pixelSnappingFraction = 0;
+
+        this.focusOffsetTop = 0;
+
+        this.focusOffsetBottom = 0;
+
+        this.isFullScreen = false;
 
         this.invalidateResponsiveState = true;
 
@@ -4578,10 +5000,10 @@ N2D('SmartSliderResponsive', function ($, undefined) {
             forceFull: 0,
             forceFullOverflowX: 'body',
             forceFullHorizontalSelector: '',
-            verticalOffsetSelectors: '',
+            sliderHeightBasedOn: 'real',
             decreaseSliderHeight: 0,
 
-            focusUser: 0,
+            focusUser: 1,
             focusAutoplay: 0,
 
             deviceModes: {
@@ -4639,8 +5061,11 @@ N2D('SmartSliderResponsive', function ($, undefined) {
             tabletLandscapeScreenWidth: 1024,
             mobileLandscapeScreenWidth: 740,
             orientationMode: 'width_and_height',
-            scrollFix: 0,
-            overflowHiddenPage: 0
+            overflowHiddenPage: 0,
+            focus: {
+                offsetTop: '',
+                offsetBottom: ''
+            }
         }, parameters);
 
         if (slider.isAdmin) {
@@ -4650,7 +5075,7 @@ N2D('SmartSliderResponsive', function ($, undefined) {
         this.loadDeferred = $.Deferred();
 
         /**
-         * @type {SmartSliderAbstract}
+         * @type {N2Classes.SmartSliderAbstract}
          */
         this.slider = slider;
         this.sliderElement = slider.sliderElement;
@@ -4728,6 +5153,7 @@ N2D('SmartSliderResponsive', function ($, undefined) {
 
 
         this.alignElement = this.slider.sliderElement.closest('.n2-ss-align');
+        this.$section = this.alignElement.parent();
 
         var ready = this.ready = $.Deferred();
 
@@ -4736,6 +5162,11 @@ N2D('SmartSliderResponsive', function ($, undefined) {
         this.sliderElement.one('SliderResize', function () {
             ready.resolve();
         });
+
+        if (this.parameters.type === 'fullpage' && this.parameters.sliderHeightBasedOn === '100vh') {
+            this.$viewportHeight = $('<div style="height:100vh;width:0;position:absolute;bottom:0;visibility:hidden;"></div>').appendTo('body');
+        }
+
 
         this.containerElementPadding = this.sliderElement.parent();
         this.containerElement = this.containerElementPadding.parent();
@@ -4761,8 +5192,6 @@ N2D('SmartSliderResponsive', function ($, undefined) {
                     isMobile = !!md.phone();
                 }
         }
-
-        this.verticalOffsetSelectors = $(this.parameters.verticalOffsetSelectors);
 
         n2c.log('Responsive: Store defaults');
         this.storeDefaults();
@@ -4805,6 +5234,12 @@ N2D('SmartSliderResponsive', function ($, undefined) {
         }
 
         this.onResize();
+
+        $(window).on('SliderContentResize', $.proxy(function (e) {
+            this.invalidateResponsiveState = true;
+            this.onResize(e);
+        }, this));
+
         if (this.parameters.onResizeEnabled || this.parameters.type == 'adaptive') {
             $(window).on({
                 resize: $.proxy(this.onResize, this),
@@ -4813,15 +5248,38 @@ N2D('SmartSliderResponsive', function ($, undefined) {
 
             this.sliderElement.on('SliderInternalResize', $.proxy(this.onResize, this));
 
-            if (this.parameters.scrollFix) {
+
+            if (window.ResizeObserver !== undefined) {
+                var width = 0,
+                    observer = new ResizeObserver($.proxy(function (entries) {
+                        entries.forEach($.proxy(function (entry) {
+                            if (width !== entry.contentRect.width) {
+                                width = entry.contentRect.width;
+                                this.sliderElement.triggerHandler('SliderInternalResize');
+                            }
+                        }, this));
+                    }, this));
+                observer.observe(this.containerElement.parent().get(0));
+            } else {
                 try {
-                    var that = this,
-                        iframe = $('<iframe sandbox="allow-same-origin allow-scripts" style="height: 0; background-color: transparent; margin: 0; padding: 0; overflow: hidden; border-width: 0; position: absolute; width: 100%;"/>')
-                            .on('load', function (e) {
-                                $(e.target.contentWindow ? e.target.contentWindow : e.target.contentDocument.defaultView).on('resize', function () {
-                                    that.sliderElement.triggerHandler('SliderInternalResize');
-                                });
-                            }).insertBefore(this.containerElement);
+                    /**
+                     * We can detect every width changes with a dummy iframe.
+                     */
+                    var iframe = $('<iframe class="bt_skip_resize" sandbox="allow-same-origin allow-scripts" style="margin:0;padding:0;border:0;display:block;width:100%;height:0;min-height:0;max-height:0px;"/>')
+                        .on('load', $.proxy(function (e) {
+                            var width = 0,
+                                $frame = $(e.target.contentWindow ? e.target.contentWindow : e.target.contentDocument.defaultView).on('resize', $.proxy(function (e) {
+                                    var newWidth = $frame.width();
+                                    if (width !== newWidth) {
+                                        width = newWidth;
+                                        this.sliderElement.triggerHandler('SliderInternalResize');
+                                    }
+                                }, this));
+                            /**
+                             * Proxy window lang to the iframe
+                             */
+                            $frame[0].document.getElementsByTagName("HTML")[0].setAttribute("lang", window.document.getElementsByTagName("HTML")[0].getAttribute('lang'));
+                        }, this)).insertBefore(this.containerElement);
                 } catch (e) {
                 }
             }
@@ -4843,7 +5301,7 @@ N2D('SmartSliderResponsive', function ($, undefined) {
         };
 
         /**
-         * @type {SmartSliderResponsiveElement[]}
+         * @type {N2Classes.SmartSliderResponsiveElement[]}
          */
         this.horizontalElements = [];
         this.verticalElements = [];
@@ -4883,6 +5341,8 @@ N2D('SmartSliderResponsive', function ($, undefined) {
             }
             responsiveElement.resize(this.responsiveDimensions, ratios[responsiveElement.ratioName], false, 0);
         }
+
+        this.slider.sliderElement.triggerHandler('SliderResizeHorizontal');
     };
 
     SmartSliderResponsive.prototype.updateVerticalRatios = function (ratios) {
@@ -4932,15 +5392,15 @@ N2D('SmartSliderResponsive', function ($, undefined) {
 
     SmartSliderResponsive.prototype.onResize = function (e) {
         if (!this.slider.mainAnimation || this.slider.mainAnimation.getState() != 'playing') {
-            this.doResize(e);
+            this._onResize(e);
         } else if (!this.delayedResizeAdded) {
             this.delayedResizeAdded = true;
-            this.sliderElement.on('mainAnimationComplete.responsive', $.proxy(this._doDelayedResize, this));
+            this.sliderElement.on('mainAnimationComplete.responsive', $.proxy(this._onResize, this, e));
         }
     };
 
-    SmartSliderResponsive.prototype._doDelayedResize = function () {
-        this.doResize();
+    SmartSliderResponsive.prototype._onResize = function (e) {
+        this.doResize(e);
         this.delayedResizeAdded = false;
     };
 
@@ -5038,7 +5498,47 @@ N2D('SmartSliderResponsive', function ($, undefined) {
         return targetMode;
     };
 
+    SmartSliderResponsive.prototype.updateOffsets = function () {
+        this.focusOffsetTop = 0;
+        if (this.parameters.focus.offsetTop !== '') {
+            var $offsetTopElements = $(this.parameters.focus.offsetTop);
+            for (var i = 0; i < $offsetTopElements.length; i++) {
+                this.focusOffsetTop += $offsetTopElements.eq(i).outerHeight();
+            }
+        }
+
+        this.focusOffsetBottom = 0;
+        if (this.parameters.focus.offsetBottom !== '') {
+            var $offsetBottomElements = $(this.parameters.focus.offsetBottom);
+            for (var i = 0; i < $offsetBottomElements.length; i++) {
+                this.focusOffsetBottom += $offsetBottomElements.eq(i).outerHeight();
+            }
+        }
+    };
+
+    /**
+     * Snapping the slider to rounded pixel to fix issues related to a Chrome rendering bug
+     * @see https://bugs.chromium.org/p/chromium/issues/detail?id=936006#c6
+     */
+    SmartSliderResponsive.prototype.doPixelSnapping = function () {
+        var left = this.containerElementPadding[0].getBoundingClientRect().left + this.pixelSnappingFraction,
+            fraction = left % 1;
+
+        if (fraction !== this.pixelSnappingFraction) {
+            this.containerElementPadding.css({
+                'marginLeft': (-fraction) + 'px',
+                'marginRight': (-fraction) + 'px'
+            });
+
+            this.pixelSnappingFraction = fraction;
+        }
+    };
+
     SmartSliderResponsive.prototype.doResize = function (e, timeline, nextSlide, duration) {
+
+        this.doPixelSnapping();
+
+        this.updateOffsets();
 
         if (!this.disableTransitions) {
             this.disableTransitions = true;
@@ -5050,6 +5550,13 @@ N2D('SmartSliderResponsive', function ($, undefined) {
                 this.sliderElement.removeClass('n2notransition');
                 this.disableTransitions = false;
             }, this), 500);
+        }
+
+        if (!this.containerElementPadding.is(':visible')) {
+            /**
+             * The slider is not visible, so there is nothing to resize.
+             */
+            return false;
         }
 
         // required to force recalculate if the thumbnails widget get hidden.
@@ -5150,44 +5657,58 @@ N2D('SmartSliderResponsive', function ($, undefined) {
         if (!this.slider.isAdmin) {
             if (this.parameters.type === 'fullpage') {
                 var clientHeight = 0;
-                if (window.matchMedia && (/Android|iPhone|iPad|iPod|BlackBerry/i).test(navigator.userAgent || navigator.vendor || window.opera)) {
-                    var innerHeight,
-                        isOrientationChanged = false;
-
-                    if (e && e.type === 'orientationchange') {
-                        isOrientationChanged = true;
-                    }
-
-                    if (n2const.isIOS) {
-                        innerHeight = document.documentElement.clientHeight;
-                    } else {
-                        innerHeight = window.innerHeight;
-                    }
-
-                    if (window.matchMedia("(orientation: landscape)").matches) {
-                        // landscape
-                        clientHeight = Math.min(screen.width, innerHeight);
-                        if (this.lastOrientation != 90) {
-                            isOrientationChanged = true;
-                            this.lastOrientation = 90;
-                        }
-                    } else {
-                        clientHeight = Math.min(screen.height, innerHeight);
-                        if (this.lastOrientation != 0) {
-                            isOrientationChanged = true;
-                            this.lastOrientation = 0;
-                        }
-                    }
-
-                    clientHeight = window.n2ClientHeight || clientHeight;
-
-                    if (!isOrientationChanged && Math.abs(clientHeight - this.lastClientHeight) < 100) {
-                        clientHeight = this.lastClientHeight;
-                    } else {
-                        this.lastClientHeight = clientHeight;
-                    }
+                if (this.parameters.sliderHeightBasedOn === '100vh') {
+                    clientHeight = this.$viewportHeight.height();
                 } else {
-                    clientHeight = window.n2ClientHeight || document.documentElement.clientHeight || document.body.clientHeight;
+                    if (window.matchMedia && (/Android|iPhone|iPad|iPod|BlackBerry/i).test(navigator.userAgent || navigator.vendor || window.opera)) {
+                        var innerHeight,
+                            isOrientationChanged = false;
+
+                        if (e && e.type === 'orientationchange') {
+                            isOrientationChanged = true;
+                        }
+
+                        if (n2const.isIOS) {
+                            innerHeight = document.documentElement.clientHeight;
+                        } else {
+                            innerHeight = window.innerHeight;
+                        }
+
+                        if (window.matchMedia("(orientation: landscape)").matches) {
+                            // landscape
+                            clientHeight = Math.min(screen.width, innerHeight);
+                            if (this.lastOrientation != 90) {
+                                isOrientationChanged = true;
+                                this.lastOrientation = 90;
+                            }
+                        } else {
+                            clientHeight = Math.min(screen.height, innerHeight);
+                            if (this.lastOrientation != 0) {
+                                isOrientationChanged = true;
+                                this.lastOrientation = 0;
+                            }
+                        }
+
+                        clientHeight = window.n2ClientHeight || clientHeight;
+
+                        var time = $.now();
+                        /**
+                         * If screen height change smaller than this value, then we will skip that resize.
+                         * @type {number}
+                         */
+                        var dismissDeltaChange = 100;
+                        if ((/SamsungBrowser/i).test(navigator.userAgent)) {
+                            dismissDeltaChange = 150;
+                        }
+                        if (!isOrientationChanged && Math.abs(clientHeight - this.lastClientHeight) < dismissDeltaChange && time - this.lastClientHeightTime > 400) {
+                            clientHeight = this.lastClientHeight;
+                        } else {
+                            this.lastClientHeight = clientHeight;
+                            this.lastClientHeightTime = time;
+                        }
+                    } else {
+                        clientHeight = window.n2ClientHeight || document.documentElement.clientHeight || document.body.clientHeight;
+                    }
                 }
 
                 if (n2const.isBot) {
@@ -5199,6 +5720,7 @@ N2D('SmartSliderResponsive', function ($, undefined) {
         }
 
         if (hasOrientationOrDeviceChange) {
+            this.invalidateResponsiveState = true;
             var lastNormalized = this._normalizeMode(SmartSliderResponsive._DeviceMode[lastDevice], SmartSliderResponsive._DeviceOrientation[lastOrientation]),
                 normalized = this._normalizeMode(SmartSliderResponsive._DeviceMode[this.deviceMode], SmartSliderResponsive._DeviceOrientation[this.orientation]);
 
@@ -5452,10 +5974,10 @@ N2D('SmartSliderResponsive', function ($, undefined) {
     };
 
     SmartSliderResponsive.prototype.getVerticalOffsetHeight = function () {
-        var h = 0;
-        for (var i = 0; i < this.verticalOffsetSelectors.length; i++) {
-            h += this.verticalOffsetSelectors.eq(i).outerHeight();
+        if (this.isFullScreen) {
+            return 0;
         }
+        var h = this.focusOffsetTop + this.focusOffsetBottom;
 
         if (this.slider.widgets.$vertical) {
             for (var i = 0; i < this.slider.widgets.$vertical.length; i++) {
@@ -6091,6 +6613,7 @@ N2D('FrontendItemYouTube', function ($, undefined) {
         this.state = {
             scroll: false,
             slide: false,
+            InComplete: false,
             play: false,
             continuePlay: false
         };
@@ -6105,29 +6628,14 @@ N2D('FrontendItemYouTube', function ($, undefined) {
             youtubecode: "MKmIwHAFjSU",
             center: 0,
             autoplay: "1",
-            theme: "dark",
             related: "1",
-            vq: "default",
             volume: "-1",
             loop: 0,
-            showinfo: 1,
             modestbranding: 1,
             reset: 0,
             query: [],
             playsinline: 0
         }, parameters);
-
-        if (parseInt(this.parameters.autoplay) === 1 && (navigator.userAgent.toLowerCase().indexOf("android") > -1 || n2const.isIOS)) {
-            this.parameters.autoplay = 0;
-            try {
-                if ('playsInline' in document.createElement('video')) {
-                    this.parameters.autoplay = 1;
-                    this.parameters.playsinline = 1;
-                    this.parameters.volume = 0;
-                }
-            } catch (e) {
-            }
-        }
 
         if (parseInt(this.parameters.autoplay) === 1 || !hasImage || n2const.isMobile) {
             this.ready($.proxy(this.initYoutubePlayer, this));
@@ -6168,22 +6676,27 @@ N2D('FrontendItemYouTube', function ($, undefined) {
         FrontendItemYouTube.YTDeferred.done(callback);
     };
 
+    FrontendItemYouTube.prototype.fadeOutCover = function () {
+        if (this.coverFadedOut === undefined && this.$cover.length) {
+            this.coverFadedOut = true;
+            NextendTween.to(this.$cover, 0.3, {
+                opacity: 0,
+                onComplete: $.proxy(function () {
+                    this.$cover.remove();
+                }, this)
+            });
+        }
+    };
 
     FrontendItemYouTube.prototype.initYoutubePlayer = function () {
-        var layer = this.$playerElement.closest(".n2-ss-layer");
+        var $layer = this.$playerElement.closest(".n2-ss-layer");
+        this.layer = $layer.data('layer');
 
         if (this.$cover.length) {
             if (n2const.isMobile) {
                 this.$cover.css('pointer-events', 'none');
             }
-            layer.one('n2play', $.proxy(function () {
-                NextendTween.to(this.$cover, 0.3, {
-                    opacity: 0,
-                    onComplete: $.proxy(function () {
-                        this.$cover.remove();
-                    }, this)
-                });
-            }, this));
+            $layer.one('n2play', $.proxy(this.fadeOutCover, this));
         }
 
         this.isStatic = this.$playerElement.closest('.n2-ss-static-slide').length;
@@ -6191,19 +6704,37 @@ N2D('FrontendItemYouTube', function ($, undefined) {
         var vars = {
             enablejsapi: 1,
             origin: window.location.protocol + "//" + window.location.host,
-            theme: this.parameters.theme,
             wmode: "opaque",
-            rel: this.parameters.related,
-            vq: this.parameters.vq,
+            rel: 1 - this.parameters.related,
             start: this.parameters.start,
-            showinfo: this.parameters.showinfo,
+            end: this.parameters.end,
             modestbranding: this.parameters.modestbranding,
             playsinline: this.parameters.playsinline
         };
 
+        if (parseInt(this.parameters.autoplay) === 1) {
+            if (navigator.userAgent.toLowerCase().indexOf("android") > -1) {
+                this.parameters.volume = 0;
+            } else if (n2const.isIOS) {
+                this.parameters.autoplay = 0;
+                try {
+                    if ('playsInline' in document.createElement('video')) {
+                        this.parameters.autoplay = 1;
+                        this.parameters.volume = 0;
+
+                        vars.playsinline = 1;
+                    }
+                } catch (e) {
+                }
+            }
+        }
+
+        if (n2const.isIOS && this.parameters.controls) {
+            vars.use_native_controls = 1;
+        }
+
         if (this.parameters.center == 1) {
             vars.controls = 0;
-            vars.showinfo = 0;
         }
         if (this.parameters.controls != 1) {
             vars.autohide = 1;
@@ -6232,10 +6763,10 @@ N2D('FrontendItemYouTube', function ($, undefined) {
                             if (!this.isStatic) {
                                 this.slider.sliderElement.trigger('mediaStarted', this.playerId);
                             }
-                            layer.triggerHandler('n2play');
+                            $layer.triggerHandler('n2play');
                             break;
                         case YT.PlayerState.PAUSED:
-                            layer.triggerHandler('n2pause');
+                            $layer.triggerHandler('n2pause');
                             if (this.state.continuePlay) {
                                 this.setState('continuePlay', false);
                                 this.setState('play', true);
@@ -6245,13 +6776,13 @@ N2D('FrontendItemYouTube', function ($, undefined) {
                             break;
                         case YT.PlayerState.ENDED:
                             if (this.parameters.loop == 1) {
-                                this.player.seekTo(0);
+                                this.player.seekTo(this.parameters.start);
                                 this.player.playVideo();
                             } else {
                                 if (!this.isStatic) {
                                     this.slider.sliderElement.trigger('mediaEnded', this.playerId);
                                 }
-                                layer.triggerHandler('n2stop');
+                                $layer.triggerHandler('n2stop');
                                 this.setState('play', false);
                             }
                             break;
@@ -6306,7 +6837,7 @@ N2D('FrontendItemYouTube', function ($, undefined) {
             if (parseInt(this.parameters.reset)) {
                 this.slider.sliderElement.on("mainAnimationComplete", $.proxy(function (e, mainAnimation, previousSlideIndex, currentSlideIndex) {
                     if ($.inArray(this.slide, this.slider.getVisibleSlides(this.slider.slides[currentSlideIndex])) == -1) {
-                        this.player.seekTo(0);
+                        this.player.seekTo(this.parameters.start);
                     }
                 }, this));
             }
@@ -6348,6 +6879,8 @@ N2D('FrontendItemYouTube', function ($, undefined) {
     };
 
     FrontendItemYouTube.prototype.initAutoplay = function () {
+        this.setState('InComplete', true, true);
+    
 
         if (!this.isStatic) {
             //change slide
@@ -6376,7 +6909,7 @@ N2D('FrontendItemYouTube', function ($, undefined) {
         this.state[name] = value;
 
         if (doAction) {
-            if (this.state.play && this.state.slide && this.state.scroll) {
+            if (this.state.play && this.state.slide && this.state.InComplete && this.state.scroll) {
                 this.play();
             } else {
                 this.pause();
@@ -6386,6 +6919,9 @@ N2D('FrontendItemYouTube', function ($, undefined) {
 
     FrontendItemYouTube.prototype.play = function () {
         if (this.isStopped()) {
+            if (this.coverFadedOut === undefined) {
+                setTimeout($.proxy(this.fadeOutCover, this), 200);
+            }
             this.slider.sliderElement.trigger('mediaStarted', this.playerId);
             this.player.playVideo();
         }
