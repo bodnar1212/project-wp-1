@@ -80,9 +80,18 @@ function travelify_headerdetails() {
 
 	<div class="container clearfix">
 		<div class="hgroup-wrap clearfix">
-					<section class="hgroup-right">
-						<?php travelify_socialnetworks( $flag ); ?>
-					</section><!-- .hgroup-right -->
+            <section class="hgroup-right">
+				<?php travelify_socialnetworks( $flag ); ?>
+
+
+            </section><!-- .hgroup-right -->
+
+            <section class="hgroup-right">
+	            <?php
+	            if ( function_exists ( 'wpm_language_switcher' ) )
+		            wpm_language_switcher ('list', 'flag');
+	            ?>
+            </section><!-- .hgroup-right -->
 				<hgroup id="site-logo" class="clearfix">
 					<?php
 						if( $options[ 'header_show' ] != 'disable-both' && $options[ 'header_show' ] == 'header-text' ) {
