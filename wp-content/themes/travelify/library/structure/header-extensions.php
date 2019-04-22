@@ -79,18 +79,17 @@ function travelify_headerdetails() {
 	?>
 
 	<div class="container clearfix">
+        <div class="language-switcher-container clearfix">
+            <?php
+            if ( function_exists ( 'wpm_language_switcher' ) )
+                wpm_language_switcher ('list', 'flag');
+            ?>
+            <div class="clearfix"></div>
+        </div>
+
 		<div class="hgroup-wrap clearfix">
             <section class="hgroup-right">
 				<?php travelify_socialnetworks( $flag ); ?>
-
-
-            </section><!-- .hgroup-right -->
-
-            <section class="hgroup-right">
-	            <?php
-	            if ( function_exists ( 'wpm_language_switcher' ) )
-		            wpm_language_switcher ('list', 'flag');
-	            ?>
             </section><!-- .hgroup-right -->
 				<hgroup id="site-logo" class="clearfix">
 					<?php

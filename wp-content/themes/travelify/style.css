@@ -513,7 +513,7 @@ a.more-link:hover {
 	margin-top: 15px;
 }
 .hgroup-wrap {
-	padding-top: 15px;
+	padding-top: 0px;
 	padding-bottom: 35px;
 }
 .hgroup-wrap a {
@@ -521,7 +521,7 @@ a.more-link:hover {
 }
 #site-logo {
 	float: left;
-	margin-top: 32px;
+	margin-top: 18px;
 }
 #site-title {
 	font: 36px 'Ubuntu', sans-serif;
@@ -1841,6 +1841,10 @@ article {
 	#footerarea .widget_info,#footerarea .widget_text {
 		margin-bottom: 30px;
 	}
+
+	.language-switcher-container {
+		padding-left: 15px;
+	}
 }
 
 /* All Mobile Portrait size smaller than 768 (devices and browsers) */
@@ -1999,6 +2003,10 @@ article {
 		text-align: center;
 		float: none;
 	}
+
+	.language-switcher-container {
+		padding-left: 15px;
+	}
 }
 
 /* All Mobile landscape size and All Mini Tablet Portrait size smaller than standard 768 and larger than 480 (devices and browsers) */
@@ -2058,4 +2066,12 @@ article {
 	top: 5px;
 	width: auto;
 	z-index: 100000; /* Above WP toolbar. */
+}
+
+.switcher-list li {
+	float: left;
+}
+
+.language-switcher-container {
+	padding-top: 15px;
 }
